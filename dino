@@ -38,6 +38,41 @@ local function teleport(teleportTo, dinoToSpawn)
     task.wait(0.1)
 end
 
+local pathsToCheck = {
+    workspace["Map Assets"].Ambiances,
+    workspace.AmbienceBoundaries
+
+}
+
+local function teleportToMouse()
+    local mouse = player:GetMouse()
+    local camera = workspace.CurrentCamera
+    
+    local ray = Ray.new(camera.CFrame.Position, (mouse.UnitRay.Direction * 1000))
+    
+    local ignoreList = {player.Character}
+    
+    -- Only check parts in specific paths
+    for _, path in ipairs(pathsToCheck) do
+        if path then
+            for _, part in ipairs(path:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if part.Transparency >= 0.5 or part.CanCollide == false then
+                        table.insert(ignoreList, part)
+                    end
+                end
+            end
+        end
+    end
+    
+    local hit, position = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
+    
+    if position then
+        teleport(CFrame.new(position))
+    end
+end
+
+
 local function processAmber()
     for _, child in ipairs(amberFolder:GetChildren()) do
         local hasParts = false
@@ -544,5 +579,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.H then
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
         teleport(currentCFrame)
+    end
+    if input.KeyCode == Enum.KeyCode.X then
+        teleportToMouse()
     end
 end)
