@@ -271,9 +271,19 @@ teleportButton.Font = Enum.Font.SourceSansBold
 teleportButton.TextSize = 18
 teleportButton.Parent = rightPanel
 
+local teleportMiddleButton = Instance.new("TextButton")
+teleportMiddleButton.Size = UDim2.new(1, -20, 0, 40)
+teleportMiddleButton.Position = UDim2.new(0, 10, 0, 260)
+teleportMiddleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 200)
+teleportMiddleButton.TextColor3 = Color3.new(1,1,1)
+teleportMiddleButton.Text = "Teleport to Middle"
+teleportMiddleButton.Font = Enum.Font.SourceSansBold
+teleportMiddleButton.TextSize = 18
+teleportMiddleButton.Parent = rightPanel
+
 local amberButton = Instance.new("TextButton")
 amberButton.Size = UDim2.new(1, -20, 0, 40)
-amberButton.Position = UDim2.new(0, 10, 0, 260)
+amberButton.Position = UDim2.new(0, 10, 0, 310)
 amberButton.BackgroundColor3 = Color3.fromRGB(150, 100, 0)
 amberButton.TextColor3 = Color3.new(1,1,1)
 amberButton.Text = "Farm Amber"
@@ -378,6 +388,12 @@ teleportButton.MouseButton1Click:Connect(function()
         statusLabel.Text = "Player not found or not in game"
         statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
     end
+end)
+
+teleportMiddleButton.MouseButton1Click:Connect(function()
+    local middleCFrame = CFrame.new(-545.565002, 24.1376266, 582.742737, 0.789563239, 0.159172803, 0.592666805, -0.376903147, 0.887939095, 0.263644189, -0.484287053, -0.431541711, 0.761076748)
+
+    teleport(middleCFrame)
 end)
 
 amberButton.MouseButton1Click:Connect(function()
