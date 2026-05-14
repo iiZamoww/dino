@@ -114,13 +114,26 @@ local ownedDinosaurs = {
     "Ceratosaurus", "Carnotaurus", "Parasaurolophus", "Allosaurus"
 }
 
-local ownedLower = {}
-for _, name in ipairs(ownedDinosaurs) do
-    ownedLower[name:lower()] = true
-end
-
 local function isOwned(dinoName)
-    return ownedLower[dinoName:lower()] == true
+    for _, obj in ipairs(selectionFolder:GetDescendants()) do
+        if obj:IsA("Frame") then
+            local textObject = obj:FindFirstChildWhichIsA("TextLabel", true) or obj:FindFirstChildWhichIsA("TextButton", true)
+            if textObject and textObject.Text ~= "" then
+                local frameDinoName = textObject.Text:lower()
+                frameDinoName = frameDinoName:sub(1,1):upper() .. frameDinoName:sub(2)
+                
+                if frameDinoName == dinoName then
+                    local imageButton = obj:FindFirstChild("2")
+                    if imageButton and imageButton:IsA("ImageButton") then
+                        -- White ImageColor3 = owned
+                        return imageButton.ImageColor3 == Color3.new(1, 1, 1)
+                    end
+                    break
+                end
+            end
+        end
+    end
+    return false
 end
 
 ---------------------------------------------------
