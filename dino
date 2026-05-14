@@ -70,6 +70,16 @@ local function teleport(teleportTo, dinoToSpawn)
     task.wait(0.1)
 end
 
+local function despawn()
+    local despawnRemote = ReplicatedStorage:FindFirstChild("shared/network/init@GlobalEvents")
+    if despawnRemote then
+        local despawnEvent = despawnRemote:FindFirstChild("despawn")
+        if despawnEvent then
+            despawnEvent:FireServer()
+        end
+    end
+end
+
 local pathsToCheck = {
     workspace["Map Assets"].Ambiances,
     workspace.AmbienceBoundaries
@@ -339,6 +349,7 @@ dropdown.Parent = rightPanel
 dropdown.BackgroundTransparency = 0.5
 
 local dropdownLayout = Instance.new("UIListLayout")
+dropdown.Size = UDim2.new(1, -20, 0, 100)
 dropdownLayout.Padding = UDim.new(0, 2)
 dropdownLayout.Parent = dropdown
 
@@ -352,9 +363,19 @@ teleportButton.Font = Enum.Font.SourceSansBold
 teleportButton.TextSize = 18
 teleportButton.Parent = rightPanel
 
+local teleportBugButton = Instance.new("TextButton")
+teleportBugButton.Size = UDim2.new(1, -20, 0, 40)
+teleportBugButton.Position = UDim2.new(0, 10, 0, 260)
+teleportBugButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+teleportBugButton.TextColor3 = Color3.new(1,1,1)
+teleportBugButton.Text = "Teleport & Bug Player"
+teleportBugButton.Font = Enum.Font.SourceSansBold
+teleportBugButton.TextSize = 18
+teleportBugButton.Parent = rightPanel
+
 local teleportMiddleButton = Instance.new("TextButton")
 teleportMiddleButton.Size = UDim2.new(1, -20, 0, 40)
-teleportMiddleButton.Position = UDim2.new(0, 10, 0, 260)
+teleportMiddleButton.Position = UDim2.new(0, 10, 0, 310)
 teleportMiddleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 200)
 teleportMiddleButton.TextColor3 = Color3.new(1,1,1)
 teleportMiddleButton.Text = "Teleport to Middle"
@@ -364,7 +385,7 @@ teleportMiddleButton.Parent = rightPanel
 
 local amberButton = Instance.new("TextButton")
 amberButton.Size = UDim2.new(1, -20, 0, 40)
-amberButton.Position = UDim2.new(0, 10, 0, 310)
+amberButton.Position = UDim2.new(0, 10, 0, 360)
 amberButton.BackgroundColor3 = Color3.fromRGB(150, 100, 0)
 amberButton.TextColor3 = Color3.new(1,1,1)
 amberButton.Text = "Farm Amber"
@@ -374,7 +395,7 @@ amberButton.Parent = rightPanel
 
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, -20, 0, 40)
-statusLabel.Position = UDim2.new(0, 10, 0, 310)
+statusLabel.Position = UDim2.new(0, 10, 0, 150)
 statusLabel.BackgroundTransparency = 1
 statusLabel.TextColor3 = Color3.new(1,1,1)
 statusLabel.Text = ""
@@ -382,7 +403,6 @@ statusLabel.Font = Enum.Font.SourceSans
 statusLabel.TextSize = 14
 statusLabel.Parent = rightPanel
 
--- Update dropdown with matching players
 local function updateDropdown(searchText)
     for _, child in ipairs(dropdown:GetChildren()) do
         if child:IsA("TextButton") then
@@ -390,17 +410,22 @@ local function updateDropdown(searchText)
         end
     end
     
-    if searchText == "" then
-        dropdown.Visible = false
-        return
-    end
-    
-    local searchLower = searchText:lower()
     local matches = {}
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Name:lower():find(searchLower) and player ~= Players.LocalPlayer then
-            table.insert(matches, player.Name)
+
+    if searchText == "" then
+        -- Show all players except yourself
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= Players.LocalPlayer then
+                table.insert(matches, player.Name)
+            end
+        end
+    else
+        local searchLower = searchText:lower()
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Name:lower():find(searchLower) and player ~= Players.LocalPlayer then
+                table.insert(matches, player.Name)
+            end
         end
     end
     
@@ -408,7 +433,14 @@ local function updateDropdown(searchText)
     
     if #matches > 0 then
         dropdown.Visible = true
-        dropdown.CanvasSize = UDim2.new(0, 0, 0, math.min(#matches * 30, 120))
+
+        local buttonHeight = 30
+        local padding = 2
+        local totalHeight = #matches * (buttonHeight + padding)
+
+        dropdown.Size = UDim2.new(1, -20, 0, 100)
+
+        dropdown.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
         
         for _, name in ipairs(matches) do
             local btn = Instance.new("TextButton")
@@ -464,6 +496,32 @@ teleportButton.MouseButton1Click:Connect(function()
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
         teleport(targetPlayer.Character.HumanoidRootPart.CFrame)
         statusLabel.Text = "Teleported to " .. targetPlayer.Name
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        statusLabel.Text = "Player not found or not in game"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    end
+end)
+
+teleportBugButton.MouseButton1Click:Connect(function()
+    local targetName = teleportTextBox.Text
+    local targetPlayer = nil
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name:lower() == targetName:lower() then
+            targetPlayer = player
+            break
+        end
+    end
+    
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local originalDino = player.Character.Name
+        local currentCFrame = player.Character.HumanoidRootPart.CFrame
+        teleport(targetPlayer.Character.HumanoidRootPart.CFrame, "Giganotosaurus")
+        task.wait(1)
+        despawn()
+        teleport(targetPlayer.Character.HumanoidRootPart.CFrame, originalDino)
+        statusLabel.Text = "Teleported & bugged " .. targetPlayer.Name
         statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
     else
         statusLabel.Text = "Player not found or not in game"
@@ -661,20 +719,20 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         rejoin()
     end
     if input.KeyCode == Enum.KeyCode.M then
-        
-        local despawnRemote = ReplicatedStorage:FindFirstChild("shared/network/init@GlobalEvents")
-        if despawnRemote then
-            local despawnEvent = despawnRemote:FindFirstChild("despawn")
-            if despawnEvent then
-                despawnEvent:FireServer()
-            end
-        end
-        
+        despawn()
         task.wait(0.5)
         teleport(savedCleanCFrame)
         print(savedCleanCFrame)
     end
     if input.KeyCode == Enum.KeyCode.G then
         toggleSpeed()
+    end
+    if input.KeyCode == Enum.KeyCode.Y then
+        local originalDino = player.Character.Name
+        local currentCFrame = player.Character.HumanoidRootPart.CFrame
+        teleport(currentCFrame, "Giganotosaurus")
+        task.wait(1)
+        despawn()
+        teleport(currentCFrame, originalDino)
     end
 end)
