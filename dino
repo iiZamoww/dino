@@ -17,6 +17,37 @@ local amberFolder = workspace.ItemSpawn.Amber
 ---------------------------------------------------
 -- FUNCTIONS
 ---------------------------------------------------
+
+local savedCleanCFrame = nil
+
+local function emergencyCFrame()
+    savedCleanCFrame = player.Character.HumanoidRootPart.CFrame
+end
+
+local function serverhop()
+    local servers = {}
+    local req = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true")
+    local body = game:GetService("HttpService"):JSONDecode(req)
+    for i, v in pairs(body.data) do
+        if v.playing < v.maxPlayers and v.id ~= game.JobId then
+            table.insert(servers, v.id)
+        end
+    end
+    if #servers > 0 then
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], game.Players.LocalPlayer)
+    end
+end
+
+local function rejoin()
+    if #game.Players:GetPlayers() <= 1 then
+        game.Players.LocalPlayer:Kick("\nRejoining...")
+        task.wait()
+        game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
+    else
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, game.Players.LocalPlayer)
+    end
+end
+
 local function pressKey(key, duration)
     duration = duration or 0.05
     local keyCode = type(key) == "string" and Enum.KeyCode[key] or key
@@ -72,8 +103,9 @@ local function teleportToMouse()
     end
 end
 
-
 local function processAmber()
+    spawnRemote:FireServer("Velociraptor")
+    task.wait(0.3)
     for _, child in ipairs(amberFolder:GetChildren()) do
         local hasParts = false
         for _, descendant in ipairs(child:GetDescendants()) do
@@ -125,7 +157,7 @@ local function isOwned(dinoName)
                 if frameDinoName == dinoName then
                     local imageButton = obj:FindFirstChild("2")
                     if imageButton and imageButton:IsA("ImageButton") then
-                        -- White ImageColor3 = owned
+                        
                         return imageButton.ImageColor3 == Color3.new(1, 1, 1)
                     end
                     break
@@ -556,6 +588,7 @@ for _, dinoName in ipairs(dinos) do
             if owned then
                 startWalkSpeedLoop(multipliedSpeed)
                 local actualDinoName = dinoNameMapping[dinoName] or dinoName
+                emergencyCFrame()
                 local currentCFrame = player.Character.HumanoidRootPart.CFrame
                 teleport(currentCFrame, actualDinoName)
             else
@@ -572,7 +605,7 @@ leftLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 end)
 
 ---------------------------------------------------
--- Toggle GUI with V, Despawn with T
+-- Keybinds
 ---------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -590,10 +623,32 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         stopWalkSpeedLoop()
     end
     if input.KeyCode == Enum.KeyCode.H then
+        emergencyCFrame()
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
         teleport(currentCFrame)
     end
     if input.KeyCode == Enum.KeyCode.X then
+        emergencyCFrame()
         teleportToMouse()
+    end
+    if input.KeyCode == Enum.KeyCode.KeypadPlus then
+        serverhop()
+    end
+    if input.KeyCode == Enum.KeyCode.KeypadMinus then
+        rejoin()
+    end
+    if input.KeyCode == Enum.KeyCode.M then
+        
+        local despawnRemote = ReplicatedStorage:FindFirstChild("shared/network/init@GlobalEvents")
+        if despawnRemote then
+            local despawnEvent = despawnRemote:FindFirstChild("despawn")
+            if despawnEvent then
+                despawnEvent:FireServer()
+            end
+        end
+        
+        task.wait(0.5)
+        teleport(savedCleanCFrame)
+        print(savedCleanCFrame)
     end
 end)
