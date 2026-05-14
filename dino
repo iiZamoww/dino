@@ -19,6 +19,7 @@ local amberFolder = workspace.ItemSpawn.Amber
 ---------------------------------------------------
 
 local savedCleanCFrame = nil
+local speedEnabled = true
 
 local function emergencyCFrame()
     savedCleanCFrame = player.Character.HumanoidRootPart.CFrame
@@ -604,6 +605,28 @@ leftLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     leftScrolling.CanvasSize = UDim2.new(0, 0, 0, leftLayout.AbsoluteContentSize.Y + 10)
 end)
 
+local function toggleSpeed()
+    speedEnabled = not speedEnabled
+    if speedEnabled then
+        
+        local currentDino = player.Character and player.Character.Name
+        if currentDino then
+            local baseSpeed = getDinoSpeed(currentDino)
+            local multipliedSpeed = baseSpeed * currentMultiplier
+            startWalkSpeedLoop(multipliedSpeed)
+        end
+        print("Speed ENABLED")
+    else
+        
+        local currentDino = player.Character and player.Character.Name
+        if currentDino then
+            local baseSpeed = getDinoSpeed(currentDino)
+            startWalkSpeedLoop(baseSpeed)
+        end
+        print("Speed DISABLED")
+    end
+end
+
 ---------------------------------------------------
 -- Keybinds
 ---------------------------------------------------
@@ -650,5 +673,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         task.wait(0.5)
         teleport(savedCleanCFrame)
         print(savedCleanCFrame)
+    end
+    if input.KeyCode == Enum.KeyCode.G then
+        toggleSpeed()
     end
 end)
