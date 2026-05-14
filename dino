@@ -1,1 +1,532 @@
+local gui = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("DinoSpawnerGui")
+if gui then gui:Destroy() end
 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local VIM = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local app = playerGui:WaitForChild("App")
+local selectionFolder = app:FindFirstChild("dinosaur-selections", true)
+local spawnRemote = ReplicatedStorage:WaitForChild("shared/network/init@GlobalEvents"):WaitForChild("spawn")
+local amberFolder = workspace.ItemSpawn.Amber
+
+---------------------------------------------------
+-- FUNCTIONS
+---------------------------------------------------
+local function pressKey(key, duration)
+    duration = duration or 0.05
+    local keyCode = type(key) == "string" and Enum.KeyCode[key] or key
+    VIM:SendKeyEvent(true, keyCode, false, game)
+    task.wait(duration)
+    VIM:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function teleport(teleportTo, dinoToSpawn)
+    local oldCameraCFrame = workspace.Camera.CFrame
+    local dinoToSpawn = dinoToSpawn or player.Character.Name
+    spawnRemote:FireServer(dinoToSpawn)
+    local character = player.CharacterAdded:Wait()
+    local hRoot = character:WaitForChild("HumanoidRootPart")
+    pressKey("F")
+    task.wait(0.1)
+    workspace.Camera.CFrame = oldCameraCFrame
+    hRoot.CFrame = teleportTo
+    task.wait(0.1)
+end
+
+local function processAmber()
+    for _, child in ipairs(amberFolder:GetChildren()) do
+        local hasParts = false
+        for _, descendant in ipairs(child:GetDescendants()) do
+            if descendant:IsA("BasePart") then
+                hasParts = true
+                break
+            end
+        end
+        
+        if hasParts then
+            local proximityPrompt = child:FindFirstChildOfClass("Model").ProximityPrompt
+            if proximityPrompt then
+
+                proximityPrompt.HoldDuration = 0
+                teleport(child.CFrame, "Velociraptor")
+                task.wait(0.25)
+                proximityPrompt:InputHoldBegin()
+                task.wait(proximityPrompt.HoldDuration)
+                proximityPrompt:InputHoldEnd()
+            end
+        end
+    end
+end
+
+---------------------------------------------------
+-- ACTUAL DINOSAUR NAMES
+---------------------------------------------------
+local dinoNameMapping = {
+    ["Allosaurus"] = "DominionAllosaurus",
+}
+
+---------------------------------------------------
+-- OWNED DINOSAURS LIST
+---------------------------------------------------
+local ownedDinosaurs = {
+    "Gallimimus", "Pyroraptor", "Dimetrodon", "Dilophosaurus",
+    "Pachycephalosaurus", "Styracosaurus", "Baryonyx", "Yutyrannus",
+    "Ceratosaurus", "Carnotaurus", "Parasaurolophus", "Allosaurus"
+}
+
+local ownedLower = {}
+for _, name in ipairs(ownedDinosaurs) do
+    ownedLower[name:lower()] = true
+end
+
+local function isOwned(dinoName)
+    return ownedLower[dinoName:lower()] == true
+end
+
+---------------------------------------------------
+-- FALLBACK SPEEDS
+---------------------------------------------------
+local fallbackSpeeds = {
+    ["Allosaurus"] = 31, ["Ankylosaurus"] = 21, ["Apatosaurus"] = 16,
+    ["Baryonyx"] = 35, ["Brachiosaurus"] = 9, ["Bunny"] = 45,
+    ["Carnotaurus"] = 35, ["Ceratosaurus"] = 32, ["Demortus rex"] = 18,
+    ["Dilophosaurus"] = 43, ["Dimetrodon"] = 45, ["Gallimimus"] = 53,
+    ["Giganotosaurus"] = 23, ["Goat"] = 45, ["Iguanodon"] = 26,
+    ["Invictus rex"] = 26, ["Motavolare"] = 42, ["Pachycephalosaurus"] = 42,
+    ["Parasaurolophus"] = 34, ["Prototype rex"] = 34, ["Pyroraptor"] = 50,
+    ["R-spinosaurus"] = 28, ["Reaper theri"] = 26, ["Scarecrow bary"] = 30,
+    ["Spinosaurus"] = 27, ["Styracosaurus"] = 39, ["Suchomimus"] = 32,
+    ["Tarbosaurus"] = 28, ["Therizinosaurus"] = 29, ["Titanosaurus"] = 7,
+    ["Triceratops"] = 24, ["Tyrannosaurus"] = 25, ["Undead tyrant"] = 30,
+    ["Velociraptor"] = 50, ["Yeti trike"] = 20, ["Yutyrannus"] = 37
+}
+
+---------------------------------------------------
+-- ABLE TO TELEPORT
+---------------------------------------------------
+local teleportAllowed = {
+    ["Allosaurus"] = true, ["Ankylosaurus"] = true, ["Apatosaurus"] = true,
+    ["Baryonyx"] = true, ["Carnotaurus"] = true, ["Ceratosaurus"] = true,
+    ["Demortus rex"] = true, ["Gallimimus"] = true, ["Giganotosaurus"] = true,
+    ["Invictus rex"] = true, ["Motavolare"] = true, ["Pachycephalosaurus"] = true,
+    ["Parasaurolophus"] = true, ["Prototype rex"] = true, ["R-spinosaurus"] = true,
+    ["Reaper theri"] = true, ["Scarecrow bary"] = true, ["Spinosaurus"] = true,
+    ["Suchomimus"] = true, ["Tarbosaurus"] = true, ["Therizinosaurus"] = true,
+    ["Titanosaurus"] = true, ["Triceratops"] = true, ["Tyrannosaurus"] = true,
+    ["Undead tyrant"] = true, ["Velociraptor"] = true, ["Yeti trike"] = true,
+    ["Yutyrannus"] = true
+}
+
+---------------------------------------------------
+-- GET DINO STATS
+---------------------------------------------------
+local function getDinoSpeed(dinoName)
+    local success, DinoStatsModule = pcall(function()
+        return require(ReplicatedStorage:WaitForChild("TS"):WaitForChild("config"):WaitForChild("dinosaur-stats"))
+    end)
+    
+    if success and DinoStatsModule then
+        local DinoStats = DinoStatsModule.default or DinoStatsModule
+        for key, data in pairs(DinoStats) do
+            if key:lower() == dinoName:lower() then
+                return data.SprintSpeed or fallbackSpeeds[dinoName] or 16
+            end
+        end
+    end
+    return fallbackSpeeds[dinoName] or 16
+end
+
+---------------------------------------------------
+-- MAIN GUI (Combined)
+---------------------------------------------------
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DinoSpawnerGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 600, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -300, 0.15, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+mainFrame.BackgroundTransparency = 0.3
+
+-- Dragging
+local dragging = false
+local dragStart = nil
+local frameStart = nil
+
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        frameStart = mainFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(frameStart.X.Scale, frameStart.X.Offset + delta.X, frameStart.Y.Scale, frameStart.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+-- Left Panel (Dino Spawner)
+local leftPanel = Instance.new("Frame")
+leftPanel.Size = UDim2.new(0.5, -5, 1, 0)
+leftPanel.Position = UDim2.new(0, 0, 0, 0)
+leftPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+leftPanel.BorderSizePixel = 0
+leftPanel.Parent = mainFrame
+leftPanel.BackgroundTransparency = 0.5
+
+local leftTitle = Instance.new("TextLabel")
+leftTitle.Size = UDim2.new(1, 0, 0, 40)
+leftTitle.BackgroundTransparency = 1
+leftTitle.Text = "Dinosaur Spawner"
+leftTitle.TextColor3 = Color3.new(1,1,1)
+leftTitle.TextScaled = true
+leftTitle.Font = Enum.Font.SourceSansBold
+leftTitle.Parent = leftPanel
+
+local leftScrolling = Instance.new("ScrollingFrame")
+leftScrolling.Size = UDim2.new(1, -10, 1, -50)
+leftScrolling.Position = UDim2.new(0, 5, 0, 45)
+leftScrolling.BackgroundTransparency = 1
+leftScrolling.ScrollBarThickness = 6
+leftScrolling.CanvasSize = UDim2.new(0,0,0,0)
+leftScrolling.Parent = leftPanel
+
+local leftLayout = Instance.new("UIListLayout")
+leftLayout.Padding = UDim.new(0, 5)
+leftLayout.Parent = leftScrolling
+
+-- Right Panel (Teleport Input)
+local rightPanel = Instance.new("Frame")
+rightPanel.Size = UDim2.new(0.5, -5, 1, 0)
+rightPanel.Position = UDim2.new(0.5, 5, 0, 0)
+rightPanel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+rightPanel.BackgroundTransparency = 0.5
+rightPanel.BorderSizePixel = 0
+rightPanel.Parent = mainFrame
+
+local rightTitle = Instance.new("TextLabel")
+rightTitle.Size = UDim2.new(1, 0, 0, 40)
+rightTitle.BackgroundTransparency = 1
+rightTitle.Text = "Teleport to Player"
+rightTitle.TextColor3 = Color3.new(1,1,1)
+rightTitle.TextScaled = true
+rightTitle.Font = Enum.Font.SourceSansBold
+rightTitle.Parent = rightPanel
+
+local teleportTextBox = Instance.new("TextBox")
+teleportTextBox.Size = UDim2.new(1, -20, 0, 40)
+teleportTextBox.Position = UDim2.new(0, 10, 0, 60)
+teleportTextBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+teleportTextBox.TextColor3 = Color3.new(1,1,1)
+teleportTextBox.PlaceholderText = "Enter player name..."
+teleportTextBox.Text = ""
+teleportTextBox.Font = Enum.Font.SourceSans
+teleportTextBox.TextSize = 18
+teleportTextBox.ClearTextOnFocus = false
+teleportTextBox.Parent = rightPanel
+teleportTextBox.BackgroundTransparency = 0.5
+
+-- Autocomplete dropdown
+local dropdown = Instance.new("ScrollingFrame")
+dropdown.Size = UDim2.new(1, -20, 0, 100)
+dropdown.Position = UDim2.new(0, 10, 0, 100)
+dropdown.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+dropdown.BorderSizePixel = 1
+dropdown.BorderColor3 = Color3.fromRGB(80, 80, 80)
+dropdown.ScrollBarThickness = 4
+dropdown.Visible = false
+dropdown.Parent = rightPanel
+dropdown.BackgroundTransparency = 0.5
+
+local dropdownLayout = Instance.new("UIListLayout")
+dropdownLayout.Padding = UDim.new(0, 2)
+dropdownLayout.Parent = dropdown
+
+local teleportButton = Instance.new("TextButton")
+teleportButton.Size = UDim2.new(1, -20, 0, 40)
+teleportButton.Position = UDim2.new(0, 10, 0, 210)
+teleportButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+teleportButton.TextColor3 = Color3.new(1,1,1)
+teleportButton.Text = "Teleport to Player"
+teleportButton.Font = Enum.Font.SourceSansBold
+teleportButton.TextSize = 18
+teleportButton.Parent = rightPanel
+
+local amberButton = Instance.new("TextButton")
+amberButton.Size = UDim2.new(1, -20, 0, 40)
+amberButton.Position = UDim2.new(0, 10, 0, 260)
+amberButton.BackgroundColor3 = Color3.fromRGB(150, 100, 0)
+amberButton.TextColor3 = Color3.new(1,1,1)
+amberButton.Text = "Farm Amber"
+amberButton.Font = Enum.Font.SourceSansBold
+amberButton.TextSize = 18
+amberButton.Parent = rightPanel
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -20, 0, 40)
+statusLabel.Position = UDim2.new(0, 10, 0, 310)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.new(1,1,1)
+statusLabel.Text = ""
+statusLabel.Font = Enum.Font.SourceSans
+statusLabel.TextSize = 14
+statusLabel.Parent = rightPanel
+
+-- Update dropdown with matching players
+local function updateDropdown(searchText)
+    for _, child in ipairs(dropdown:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    if searchText == "" then
+        dropdown.Visible = false
+        return
+    end
+    
+    local searchLower = searchText:lower()
+    local matches = {}
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name:lower():find(searchLower) and player ~= Players.LocalPlayer then
+            table.insert(matches, player.Name)
+        end
+    end
+    
+    table.sort(matches)
+    
+    if #matches > 0 then
+        dropdown.Visible = true
+        dropdown.CanvasSize = UDim2.new(0, 0, 0, math.min(#matches * 30, 120))
+        
+        for _, name in ipairs(matches) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.Text = name
+            btn.Font = Enum.Font.SourceSans
+            btn.TextSize = 16
+            btn.Parent = dropdown
+            
+            btn.MouseButton1Click:Connect(function()
+                teleportTextBox.Text = name
+                dropdown.Visible = false
+            end)
+        end
+    else
+        dropdown.Visible = false
+    end
+end
+
+-- Hide dropdown when clicking elsewhere
+local function hideDropdown()
+    dropdown.Visible = false
+end
+
+teleportTextBox.Focused:Connect(function()
+    updateDropdown(teleportTextBox.Text)
+end)
+
+teleportTextBox.FocusLost:Connect(function()
+    task.wait(0.2)
+    dropdown.Visible = false
+end)
+
+teleportTextBox.Changed:Connect(function(prop)
+    if prop == "Text" then
+        updateDropdown(teleportTextBox.Text)
+    end
+end)
+
+teleportButton.MouseButton1Click:Connect(function()
+    local targetName = teleportTextBox.Text
+    local targetPlayer = nil
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name:lower() == targetName:lower() then
+            targetPlayer = player
+            break
+        end
+    end
+    
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        teleport(targetPlayer.Character.HumanoidRootPart.CFrame)
+        statusLabel.Text = "Teleported to " .. targetPlayer.Name
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        statusLabel.Text = "Player not found or not in game"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    end
+end)
+
+amberButton.MouseButton1Click:Connect(function()
+    statusLabel.Text = "Farming amber..."
+    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    task.spawn(function()
+        processAmber()
+        statusLabel.Text = "Amber farming complete!"
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        task.wait(2)
+        statusLabel.Text = ""
+    end)
+end)
+
+---------------------------------------------------
+-- WALKSPEED LOOP SYSTEM
+---------------------------------------------------
+local currentMultiplier = 2.7
+local currentSpeed = 16
+local wsLoopConnection = nil
+local charAddedConnection = nil
+
+local function setWalkSpeed(speed)
+    local char = player.Character or workspace:FindFirstChild(player.Name)
+    local human = char and char:FindFirstChildWhichIsA("Humanoid")
+    if char and human then
+        human.WalkSpeed = speed
+        currentSpeed = speed
+    end
+end
+
+local function startWalkSpeedLoop(speed)
+    if wsLoopConnection then wsLoopConnection:Disconnect() end
+    if charAddedConnection then charAddedConnection:Disconnect() end
+    
+    setWalkSpeed(speed)
+    
+    local function onWalkSpeedChanged()
+        local char = player.Character or workspace:FindFirstChild(player.Name)
+        local human = char and char:FindFirstChildWhichIsA("Humanoid")
+        if char and human and human.WalkSpeed ~= currentSpeed then
+            human.WalkSpeed = currentSpeed
+        end
+    end
+    
+    local char = player.Character or workspace:FindFirstChild(player.Name)
+    local human = char and char:FindFirstChildWhichIsA("Humanoid")
+    if char and human then
+        wsLoopConnection = human:GetPropertyChangedSignal("WalkSpeed"):Connect(onWalkSpeedChanged)
+    end
+    
+    charAddedConnection = player.CharacterAdded:Connect(function(newChar)
+        local newHuman = newChar:WaitForChild("Humanoid")
+        task.wait(0.1)
+        newHuman.WalkSpeed = currentSpeed
+        if wsLoopConnection then wsLoopConnection:Disconnect() end
+        wsLoopConnection = newHuman:GetPropertyChangedSignal("WalkSpeed"):Connect(onWalkSpeedChanged)
+    end)
+end
+
+local function stopWalkSpeedLoop()
+    if wsLoopConnection then wsLoopConnection:Disconnect() end
+    if charAddedConnection then charAddedConnection:Disconnect() end
+end
+
+---------------------------------------------------
+-- SORTED DINOSAUR SYSTEM
+---------------------------------------------------
+local dinos = {}
+local addedNames = {}
+
+if selectionFolder then
+    for _, obj in ipairs(selectionFolder:GetDescendants()) do
+        if obj:IsA("Frame") then
+            local textObject = obj:FindFirstChildWhichIsA("TextLabel", true) or obj:FindFirstChildWhichIsA("TextButton", true)
+            if textObject and textObject.Text ~= "" then
+                local dinoName = textObject.Text:lower()
+                dinoName = dinoName:sub(1,1):upper() .. dinoName:sub(2)
+                table.insert(dinos, dinoName)
+            end
+        end
+    end
+end
+
+if #dinos == 0 then
+    dinos = {"Gallimimus", "Suchomimus", "Titanosaurus", "Giganotosaurus", "Tyrannosaurus", "Triceratops", "Velociraptor", "Spinosaurus"}
+end
+
+table.sort(dinos, function(a, b) return a:lower() < b:lower() end)
+
+for _, dinoName in ipairs(dinos) do
+    if not addedNames[dinoName] then
+        addedNames[dinoName] = true
+        local baseSpeed = getDinoSpeed(dinoName)
+        local multipliedSpeed = baseSpeed * currentMultiplier
+        local canTeleport = teleportAllowed[dinoName] ~= nil
+        local teleportSymbol = canTeleport and " ✓" or " X"
+        local owned = isOwned(dinoName)
+        local buttonColor = owned and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(150, 0, 0)
+        
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(1, -5, 0, 35)
+        button.BackgroundColor3 = buttonColor
+        button.TextColor3 = Color3.new(1,1,1)
+        button.Font = Enum.Font.SourceSansBold
+        button.TextScaled = true
+        button.Text = dinoName .. " (" .. baseSpeed .. " → " .. math.floor(multipliedSpeed * 10) / 10 .. ")" .. teleportSymbol
+        button.Parent = leftScrolling
+        button.BackgroundTransparency = 0.3
+        
+        button.MouseButton1Click:Connect(function()
+            if owned then
+                startWalkSpeedLoop(multipliedSpeed)
+                local actualDinoName = dinoNameMapping[dinoName] or dinoName
+                local currentCFrame = player.Character.HumanoidRootPart.CFrame
+                teleport(currentCFrame, actualDinoName)
+            else
+                button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+                task.wait(0.2)
+                button.BackgroundColor3 = buttonColor
+            end
+        end)
+    end
+end
+
+leftLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    leftScrolling.CanvasSize = UDim2.new(0, 0, 0, leftLayout.AbsoluteContentSize.Y + 10)
+end)
+
+---------------------------------------------------
+-- Toggle GUI with V, Despawn with T
+---------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.V then
+        mainFrame.Visible = not mainFrame.Visible
+    end
+    if input.KeyCode == Enum.KeyCode.T then
+        local despawnRemote = ReplicatedStorage:FindFirstChild("shared/network/init@GlobalEvents")
+        if despawnRemote then
+            local despawnEvent = despawnRemote:FindFirstChild("despawn")
+            if despawnEvent then
+                despawnEvent:FireServer()
+            end
+        end
+        stopWalkSpeedLoop()
+    end
+    if input.KeyCode == Enum.KeyCode.H then
+        local currentCFrame = player.Character.HumanoidRootPart.CFrame
+        teleport(currentCFrame)
+    end
+end)
