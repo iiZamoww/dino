@@ -1114,6 +1114,10 @@ end
 ---------------------------------------------------
 -- Keybinds
 ---------------------------------------------------
+-- Add these OUTSIDE the InputBegan connection (near your other variables)
+local velocityConnection = nil
+
+-- Then fix your InputBegan:
 _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
 
@@ -1136,15 +1140,19 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
         teleport(currentCFrame, nil, true)
     end
+    
     if input.KeyCode == Enum.KeyCode.X then
         teleportToMouse()
     end
+    
     if input.KeyCode == Enum.KeyCode.KeypadPlus then
         serverhop()
     end
+    
     if input.KeyCode == Enum.KeyCode.KeypadMinus then
         rejoin()
     end
+    
     if input.KeyCode == Enum.KeyCode.G then
         toggleSpeed()
     end
@@ -1173,7 +1181,6 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
         local attackerName = nil
 
         for _, users in ipairs(combatFolder:GetChildren()) do
-
             for _, descendant in ipairs(users:GetChildren()) do
                 if descendant:IsA("ObjectValue") and descendant.Name == player.Name then
                     attacker = true
@@ -1186,10 +1193,10 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
         if attacker then
             local currentDino = player.Character.Name
             if Players[attackerName].Character then
-            local attackerCFrame = Players[attackerName].Character.HumanoidRootPart.CFrame
+                local attackerCFrame = Players[attackerName].Character.HumanoidRootPart.CFrame
                 teleport(attackerCFrame, currentDino, true)
             else
-            local attackerCFrame = Players[attackerName].Character.HumanoidRootPart.CFrame
+                local attackerCFrame = Players[attackerName].Character.HumanoidRootPart.CFrame
                 Players[attackerName].CharacterAdded:Wait()
                 teleport(attackerCFrame, currentDino, true)
             end
@@ -1199,15 +1206,35 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
     end
 
     if input.KeyCode == Enum.KeyCode.Insert then
-        if pingDisplayer.Visible == true then
-            pingDisplayer.Visible = false
-        else
-            pingDisplayer.Visible = true
-        end
-        if fpsDisplayer.Visible == true then
-            fpsDisplayer.Visible = false
-        else
-            fpsDisplayer.Visible = true
+        pingDisplayer.Visible = not pingDisplayer.Visible
+        fpsDisplayer.Visible = not fpsDisplayer.Visible
+    end
+
+    if input.KeyCode == Enum.KeyCode.KeypadSix then
+        local targetCFrame = CFrame.new(500, -200, 500)
+        local currentDino = player.Character.Name
+        teleport(targetCFrame, currentDino, true)
+    end
+
+    if input.KeyCode == Enum.KeyCode.C then
+        if not velocityConnection then
+            velocityConnection = RunService.Heartbeat:Connect(function()
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = player.Character.HumanoidRootPart
+                    hrp.Velocity = Vector3.new(0, 0, 0)
+                    hrp.RotVelocity = Vector3.new(0, 0, 0)
+                end
+            end)
         end
     end
-end)    
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.C then
+        if velocityConnection then
+            velocityConnection:Disconnect()
+            velocityConnection = nil
+        end
+    end
+end)
