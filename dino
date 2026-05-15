@@ -1,10 +1,20 @@
 local gui = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("DinoSpawnerGui")
 if gui then gui:Destroy() end
 
+if _G.killConnection then
+    _G.killConnection:Disconnect()
+    _G.killConnection = nil
+end
+
+if _G.keybindConnection then
+    _G.keybindConnection:Disconnect()
+end
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local VIM = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -313,7 +323,6 @@ leftLayout.Padding = UDim.new(0, 5)
 leftLayout.Parent = leftScrolling
 
 -- Right Panel (Teleport Input)
--- Right Panel (Teleport Input)
 local rightPanel = Instance.new("Frame")
 rightPanel.Size = UDim2.new(0.5, -5, 1, 0)
 rightPanel.Position = UDim2.new(0.5, 5, 0, 0)
@@ -433,6 +442,16 @@ teleportBugButton.Font = Enum.Font.SourceSansBold
 teleportBugButton.TextSize = 18
 teleportBugButton.Parent = playersTab
 
+local killButton = Instance.new("TextButton")
+killButton.Size = UDim2.new(1, -20, 0, 40)
+killButton.Position = UDim2.new(0, 10, 0, 250)
+killButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+killButton.TextColor3 = Color3.new(1,1,1)
+killButton.Text = "Kill Player"
+killButton.Font = Enum.Font.SourceSansBold
+killButton.TextSize = 18
+killButton.Parent = playersTab
+
 -- Tab 2: Misc Tab
 local miscTab = Instance.new("Frame")
 miscTab.Size = UDim2.new(1, 0, 1, 0)
@@ -486,6 +505,55 @@ statusLabel.Text = ""
 statusLabel.Font = Enum.Font.SourceSans
 statusLabel.TextSize = 14
 statusLabel.Parent = farmTab
+
+local pingDisplayer = Instance.new("TextLabel")
+pingDisplayer.Size = UDim2.new(0.1, 0, 0, 30)
+pingDisplayer.AnchorPoint = Vector2.new(1, 0)
+pingDisplayer.Position = UDim2.new(1, 0, 0, -58)
+pingDisplayer.BackgroundTransparency = 1
+pingDisplayer.TextColor3 = Color3.new(0,1,0)
+pingDisplayer.TextScaled = true
+pingDisplayer.Font = Enum.Font.SourceSansBold
+pingDisplayer.Parent = screenGui
+
+RunService.Heartbeat:Connect(function()
+    local ping = math.floor(player:GetNetworkPing() * 1000)
+    pingDisplayer.Text = "Ping: " .. ping .. " ms"
+end)
+
+local fpsValues = {}
+local fps = 240
+
+RunService.RenderStepped:Connect(function(deltaTime)
+    local currentFPS = 1 / deltaTime
+    if currentFPS > 240 then currentFPS = 240 end 
+
+    table.insert(fpsValues, currentFPS)
+
+    if #fpsValues > 30 then
+        table.remove(fpsValues, 1)
+    end
+
+    local total = 0
+    for _, value in ipairs(fpsValues) do
+        total = total + value
+    end
+    fps = math.floor(total/#fpsValues)
+end)
+
+local fpsDisplayer = Instance.new("TextLabel")
+fpsDisplayer.Size = UDim2.new(0.1, 0, 0, 30)
+fpsDisplayer.AnchorPoint = Vector2.new(1, 0)
+fpsDisplayer.Position = UDim2.new(1, 0, 0, -25)
+fpsDisplayer.BackgroundTransparency = 1
+fpsDisplayer.TextColor3 = Color3.new(0,1,0)
+fpsDisplayer.TextScaled = true
+fpsDisplayer.Font = Enum.Font.SourceSansBold
+fpsDisplayer.Parent = screenGui
+
+RunService.Heartbeat:Connect(function()
+    fpsDisplayer.Text = "FPS: " .. fps
+end)
 
 -- Tab switching function
 local function switchTab(tabName)
@@ -658,6 +726,58 @@ teleportBugButton.MouseButton1Click:Connect(function()
     end
 end)
 
+-- At the top with your other cleanup
+if _G.killConnection then
+    _G.killConnection:Disconnect()
+end
+
+-- Then later, store the connection
+local killingEnabled = false
+local currentTarget = nil
+
+_G.killConnection = killButton.MouseButton1Click:Connect(function()
+    if killingEnabled then
+        killingEnabled = false
+        currentTarget = nil
+        statusLabel.Text = "Kill loop stopped"
+        return
+    end
+    
+    local targetName = teleportTextBox.Text
+    local targetPlayer = nil
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name:lower() == targetName:lower() then
+            targetPlayer = player
+            break
+        end
+    end
+
+    if targetPlayer and targetPlayer.Character then
+        killingEnabled = true
+        currentTarget = targetPlayer
+        local currentDino = player.Character.Name
+        
+        task.spawn(function()
+            while killingEnabled and currentTarget and currentTarget.Character do
+                if player.Character and currentTarget.Character then
+                    teleport(currentTarget.Character.HumanoidRootPart.CFrame, currentDino, true)
+                    task.wait(1)
+                end
+            end
+            if killingEnabled then
+                statusLabel.Text = "Target eliminated"
+                killingEnabled = false
+                currentTarget = nil
+            end
+        end)
+        
+        statusLabel.Text = "Killing " .. targetPlayer.Name .. "..."
+    else
+        statusLabel.Text = "Player not found or not spawned"
+    end
+end)
+
 teleportMiddleButton.MouseButton1Click:Connect(function()
     local middleCFrame = CFrame.new(-545.565002, 24.1376266, 582.742737, 0.789563239, 0.159172803, 0.592666805, -0.376903147, 0.887939095, 0.263644189, -0.484287053, -0.431541711, 0.761076748)
 
@@ -816,11 +936,13 @@ end
 ---------------------------------------------------
 -- Keybinds
 ---------------------------------------------------
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+_G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
+
     if input.KeyCode == Enum.KeyCode.V then
         mainFrame.Visible = not mainFrame.Visible
     end
+
     if input.KeyCode == Enum.KeyCode.T then
         local despawnRemote = ReplicatedStorage:FindFirstChild("shared/network/init@GlobalEvents")
         if despawnRemote then
@@ -831,6 +953,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         end
         stopWalkSpeedLoop()
     end
+
     if input.KeyCode == Enum.KeyCode.H then
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
         teleport(currentCFrame, nil, true)
@@ -847,6 +970,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.G then
         toggleSpeed()
     end
+
     if input.KeyCode == Enum.KeyCode.Y then
         local originalDino = player.Character.Name
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
@@ -855,6 +979,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         task.wait(1)
         teleport(currentCFrame, originalDino, true)
     end
+
     if input.KeyCode == Enum.KeyCode.M then
         local originalDino = player.Character.Name
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
@@ -863,6 +988,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         task.wait(1)
         teleport(currentCFrame, originalDino, true)
     end
+
     if input.KeyCode == Enum.KeyCode.KeypadOne then
         local combatFolder = game:GetService("ReplicatedStorage")["ccb1ba18-1e9d-4bb5-86d2-ca2d9fc33e9c"]
         local attacker = false
@@ -893,4 +1019,17 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             print("No attacker found")
         end
     end
-end)
+
+    if input.KeyCode == Enum.KeyCode.Insert then
+        if pingDisplayer.Visible == true then
+            pingDisplayer.Visible = false
+        else
+            pingDisplayer.Visible = true
+        end
+        if fpsDisplayer.Visible == true then
+            fpsDisplayer.Visible = false
+        else
+            fpsDisplayer.Visible = true
+        end
+    end
+end)    
