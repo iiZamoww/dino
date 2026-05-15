@@ -98,6 +98,52 @@ local pathsToCheck = {
 
 }
 
+local function bring(playerToBring, shouldDespawn)
+    local oldCameraCFrame = workspace.Camera.CFrame
+    local currentCFrame = player.Character.HumanoidRootPart.CFrame
+    local currentDino = player.Character.Name
+
+    if shouldDespawn == true then
+        despawn()
+        if player.Character then
+            task.wait()
+        end
+    end
+
+    print("fired")
+    spawnRemote:FireServer("DRex")
+    print("spawned DRex")
+    local character = player.CharacterAdded:Wait()
+    local hRoot = character:WaitForChild("HumanoidRootPart")
+    pressKey("F")
+    task.wait(0.1)
+    for i = 1, 40 do
+        local currentTargetCFrame = playerToBring.Character.HumanoidRootPart.CFrame
+        local behindCFrame = currentTargetCFrame * CFrame.new(0, 0, 15)
+        hRoot.CFrame = behindCFrame
+        task.wait(0.05)
+    end
+    print("teleported to user") 
+    hRoot.CFrame = currentCFrame
+    print("teleported back")
+    task.wait(1)
+    if shouldDespawn == true then
+        despawn()
+        if player.Character then
+            task.wait()
+        end
+    end
+    spawnRemote:FireServer(currentDino)
+    local character = player.CharacterAdded:Wait()
+    local hRoot = character:WaitForChild("HumanoidRootPart")
+    print("changed back to original")
+    pressKey("F")
+    task.wait(0.1)
+    workspace.Camera.CFrame = oldCameraCFrame
+    hRoot.CFrame = currentCFrame
+    print("teleported back to original")
+end
+
 local function teleportToMouse()
     local mouse = player:GetMouse()
     local camera = workspace.CurrentCamera
@@ -163,6 +209,7 @@ end
 ---------------------------------------------------
 local dinoNameMapping = {
     ["Allosaurus"] = "DominionAllosaurus",
+    ["Demortus rex"] = "DRex"
 }
 
 ---------------------------------------------------
@@ -310,9 +357,22 @@ leftTitle.TextScaled = true
 leftTitle.Font = Enum.Font.SourceSansBold
 leftTitle.Parent = leftPanel
 
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1, -10, 0, 30)
+searchBox.Position = UDim2.new(0, 5, 0, 45)
+searchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+searchBox.TextColor3 = Color3.new(1,1,1)
+searchBox.PlaceholderText = "Search dinosaurs..."
+searchBox.Text = ""
+searchBox.Font = Enum.Font.SourceSans
+searchBox.TextSize = 14
+searchBox.ClearTextOnFocus = false
+searchBox.Parent = leftPanel
+searchBox.BackgroundTransparency = 0.3
+
 local leftScrolling = Instance.new("ScrollingFrame")
-leftScrolling.Size = UDim2.new(1, -10, 1, -50)
-leftScrolling.Position = UDim2.new(0, 5, 0, 45)
+leftScrolling.Size = UDim2.new(1, -10, 1, -85)
+leftScrolling.Position = UDim2.new(0, 5, 0, 80)
 leftScrolling.BackgroundTransparency = 1
 leftScrolling.ScrollBarThickness = 6
 leftScrolling.CanvasSize = UDim2.new(0,0,0,0)
@@ -424,7 +484,7 @@ dropdownLayout.Parent = dropdown
 
 local teleportButton = Instance.new("TextButton")
 teleportButton.Size = UDim2.new(1, -20, 0, 40)
-teleportButton.Position = UDim2.new(0, 10, 0, 150)
+teleportButton.Position = UDim2.new(0, 10, 0, 140)
 teleportButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
 teleportButton.TextColor3 = Color3.new(1,1,1)
 teleportButton.Text = "Teleport to Player"
@@ -434,7 +494,7 @@ teleportButton.Parent = playersTab
 
 local teleportBugButton = Instance.new("TextButton")
 teleportBugButton.Size = UDim2.new(1, -20, 0, 40)
-teleportBugButton.Position = UDim2.new(0, 10, 0, 200)
+teleportBugButton.Position = UDim2.new(0, 10, 0, 180)
 teleportBugButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 teleportBugButton.TextColor3 = Color3.new(1,1,1)
 teleportBugButton.Text = "Teleport & Bug Player"
@@ -444,13 +504,34 @@ teleportBugButton.Parent = playersTab
 
 local killButton = Instance.new("TextButton")
 killButton.Size = UDim2.new(1, -20, 0, 40)
-killButton.Position = UDim2.new(0, 10, 0, 250)
+killButton.Position = UDim2.new(0, 10, 0, 220)
 killButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 killButton.TextColor3 = Color3.new(1,1,1)
 killButton.Text = "Kill Player"
 killButton.Font = Enum.Font.SourceSansBold
 killButton.TextSize = 18
 killButton.Parent = playersTab
+
+local bringButton = Instance.new("TextButton")
+bringButton.Size = UDim2.new(1, -20, 0, 40)
+bringButton.Position = UDim2.new(0, 10, 0, 260)
+bringButton.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
+bringButton.TextColor3 = Color3.new(1,1,1)
+bringButton.Text = "Bring Player"
+bringButton.Font = Enum.Font.SourceSansBold
+bringButton.TextSize = 18
+bringButton.Parent = playersTab
+
+local randomPickButton = Instance.new("TextButton")
+randomPickButton.Size = UDim2.new(1, -20, 0, 20)
+randomPickButton.Position = UDim2.new(0, 10, 0, 120)
+randomPickButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+randomPickButton.BackgroundTransparency = 0.5
+randomPickButton.TextColor3 = Color3.new(1,1,1)
+randomPickButton.Text = "Pick Random Player"
+randomPickButton.Font = Enum.Font.SourceSansBold
+randomPickButton.TextSize = 18
+randomPickButton.Parent = playersTab
 
 -- Tab 2: Misc Tab
 local miscTab = Instance.new("Frame")
@@ -469,15 +550,15 @@ teleportMiddleButton.Font = Enum.Font.SourceSansBold
 teleportMiddleButton.TextSize = 18
 teleportMiddleButton.Parent = miscTab
 
-local randomTeleportButton = Instance.new("TextButton")
-randomTeleportButton.Size = UDim2.new(1, -20, 0, 40)
-randomTeleportButton.Position = UDim2.new(0, 10, 0, 60)
-randomTeleportButton.BackgroundColor3 = Color3.fromRGB(100, 0, 150)
-randomTeleportButton.TextColor3 = Color3.new(1,1,1)
-randomTeleportButton.Text = "Teleport to Random Player"
-randomTeleportButton.Font = Enum.Font.SourceSansBold
-randomTeleportButton.TextSize = 18
-randomTeleportButton.Parent = miscTab
+local bringAllButton = Instance.new("TextButton")
+bringAllButton.Size = UDim2.new(1, -20, 0, 40)
+bringAllButton.Position = UDim2.new(0, 10, 0, 60)
+bringAllButton.BackgroundColor3 = Color3.fromRGB(200, 0, 200)
+bringAllButton.TextColor3 = Color3.new(1,1,1)
+bringAllButton.Text = "Bring All Players"
+bringAllButton.Font = Enum.Font.SourceSansBold
+bringAllButton.TextSize = 18
+bringAllButton.Parent = miscTab
 
 -- Tab 3: Farm Tab
 local farmTab = Instance.new("Frame")
@@ -572,6 +653,28 @@ miscTabBtn.MouseButton1Click:Connect(function() switchTab("misc") end)
 farmTabBtn.MouseButton1Click:Connect(function() switchTab("farm") end)
 
 -- Then connect all your button functions as before, but using the new button variables
+
+local allDinoButtons = {}
+
+-- Function to update visible dinosaurs based on search
+local function updateDinoSearch()
+    local searchText = searchBox.Text:lower()
+    
+    for dinoName, button in pairs(allDinoButtons) do
+        if searchText == "" or dinoName:lower():find(searchText) then
+            button.Visible = true
+        else
+            button.Visible = false
+        end
+    end
+end
+
+-- Connect search box
+searchBox.Changed:Connect(function(prop)
+    if prop == "Text" then
+        updateDinoSearch()
+    end
+end)
 
 local function updateDropdown(searchText)
     for _, child in ipairs(dropdown:GetChildren()) do
@@ -681,7 +784,7 @@ teleportButton.MouseButton1Click:Connect(function()
     end
 end)
 
-randomTeleportButton.MouseButton1Click:Connect(function()
+randomPickButton.MouseButton1Click:Connect(function()
     local spawnedPlayers = {}
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -691,8 +794,8 @@ randomTeleportButton.MouseButton1Click:Connect(function()
     
     if #spawnedPlayers > 0 then
         local randomPlayer = spawnedPlayers[math.random(1, #spawnedPlayers)]
-        teleport(randomPlayer.Character.HumanoidRootPart.CFrame)
-        statusLabel.Text = "Teleported to random: " .. randomPlayer.Name
+        teleportTextBox.Text = randomPlayer.Name
+        statusLabel.Text = "Random player selected: " .. randomPlayer.Name
         statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
     else
         statusLabel.Text = "No other players found"
@@ -724,6 +827,78 @@ teleportBugButton.MouseButton1Click:Connect(function()
         statusLabel.Text = "Player not found or not in game"
         statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
     end
+end)
+
+bringButton.MouseButton1Click:Connect(function()
+    local targetName = teleportTextBox.Text
+    local targetPlayer = nil
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name:lower() == targetName:lower() then
+            targetPlayer = player
+            break
+        end
+    end
+
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        bring(targetPlayer, true)
+        statusLabel.Text = "Bringing " .. targetPlayer.Name
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        statusLabel.Text = "Player not found or not spawned"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    end
+end)
+
+bringAllButton.MouseButton1Click:Connect(function()
+    if bringingAll then
+        stopBringAll = true
+        statusLabel.Text = "Stopping bring all..."
+        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+        return
+    end
+    
+    bringingAll = true
+    stopBringAll = false
+    statusLabel.Text = "Bringing all players..."
+    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    
+    task.spawn(function()
+        local playersList = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                table.insert(playersList, p)
+            end
+        end
+        
+        if #playersList == 0 then
+            statusLabel.Text = "No other players found"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            bringingAll = false
+            return
+        end
+        
+        for _, targetPlayer in ipairs(playersList) do
+            if stopBringAll then
+                statusLabel.Text = "Bring all stopped"
+                statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                break
+            end
+            
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                statusLabel.Text = "Bringing " .. targetPlayer.Name .. " (" .. _ .. "/" .. #playersList .. ")"
+                bring(targetPlayer, true)
+                task.wait(2) -- Wait between brings
+            end
+        end
+        
+        if not stopBringAll then
+            statusLabel.Text = "Brought all " .. #playersList .. " players!"
+            statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        end
+        bringingAll = false
+        stopBringAll = false
+    end)
 end)
 
 -- At the top with your other cleanup
@@ -891,6 +1066,9 @@ for _, dinoName in ipairs(dinos) do
         button.Text = dinoName .. " (" .. baseSpeed .. " → " .. math.floor(multipliedSpeed * 10) / 10 .. ")" .. teleportSymbol
         button.Parent = leftScrolling
         button.BackgroundTransparency = 0.3
+        
+        -- Store button
+        allDinoButtons[dinoName] = button
         
         button.MouseButton1Click:Connect(function()
             if owned then
