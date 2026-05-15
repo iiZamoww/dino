@@ -21,10 +21,6 @@ local amberFolder = workspace.ItemSpawn.Amber
 local savedCleanCFrame = nil
 local speedEnabled = true
 
-local function emergencyCFrame()
-    savedCleanCFrame = player.Character.HumanoidRootPart.CFrame
-end
-
 local function serverhop()
     local servers = {}
     local req = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true")
@@ -57,19 +53,6 @@ local function pressKey(key, duration)
     VIM:SendKeyEvent(false, keyCode, false, game)
 end
 
-local function teleport(teleportTo, dinoToSpawn)
-    local oldCameraCFrame = workspace.Camera.CFrame
-    local dinoToSpawn = dinoToSpawn or player.Character.Name
-    spawnRemote:FireServer(dinoToSpawn)
-    local character = player.CharacterAdded:Wait()
-    local hRoot = character:WaitForChild("HumanoidRootPart")
-    pressKey("F")
-    task.wait(0.1)
-    workspace.Camera.CFrame = oldCameraCFrame
-    hRoot.CFrame = teleportTo
-    task.wait(0.1)
-end
-
 local function despawn()
     local despawnRemote = ReplicatedStorage:FindFirstChild("shared/network/init@GlobalEvents")
     if despawnRemote then
@@ -78,6 +61,25 @@ local function despawn()
             despawnEvent:FireServer()
         end
     end
+end
+
+local function teleport(teleportTo, dinoToSpawn, shouldDespawn)
+    local oldCameraCFrame = workspace.Camera.CFrame
+    local dinoToSpawn = dinoToSpawn or player.Character.Name
+    if shouldDespawn == true then
+        despawn()
+        if player.Character then
+            task.wait()
+        end
+    end
+    spawnRemote:FireServer(dinoToSpawn)
+    local character = player.CharacterAdded:Wait()
+    local hRoot = character:WaitForChild("HumanoidRootPart")
+    pressKey("F")
+    task.wait(0.1)
+    workspace.Camera.CFrame = oldCameraCFrame
+    hRoot.CFrame = teleportTo
+    task.wait(0.1)
 end
 
 local pathsToCheck = {
@@ -110,11 +112,13 @@ local function teleportToMouse()
     local hit, position = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
     
     if position then
-        teleport(CFrame.new(position))
+        teleport(CFrame.new(position), nil, true)
     end
 end
 
 local function processAmber()
+    local currentCFrame = player.Character.HumanoidRootPart.CFrame
+    local currentDino = player.Character.Name
     spawnRemote:FireServer("Velociraptor")
     task.wait(0.3)
     for _, child in ipairs(amberFolder:GetChildren()) do
@@ -131,13 +135,16 @@ local function processAmber()
             if proximityPrompt then
 
                 proximityPrompt.HoldDuration = 0
-                teleport(child.CFrame, "Velociraptor")
+                teleport(child.CFrame, "Velociraptor", false)
                 task.wait(0.25)
                 proximityPrompt:InputHoldBegin()
                 task.wait(proximityPrompt.HoldDuration)
                 proximityPrompt:InputHoldEnd()
             end
         end
+
+        task.wait(2.5)
+        teleport(currentCFrame, currentDino, true)
     end
 end
 
@@ -306,6 +313,7 @@ leftLayout.Padding = UDim.new(0, 5)
 leftLayout.Parent = leftScrolling
 
 -- Right Panel (Teleport Input)
+-- Right Panel (Teleport Input)
 local rightPanel = Instance.new("Frame")
 rightPanel.Size = UDim2.new(0.5, -5, 1, 0)
 rightPanel.Position = UDim2.new(0.5, 5, 0, 0)
@@ -317,15 +325,68 @@ rightPanel.Parent = mainFrame
 local rightTitle = Instance.new("TextLabel")
 rightTitle.Size = UDim2.new(1, 0, 0, 40)
 rightTitle.BackgroundTransparency = 1
-rightTitle.Text = "Teleport to Player"
+rightTitle.Text = "Teleport"
 rightTitle.TextColor3 = Color3.new(1,1,1)
 rightTitle.TextScaled = true
 rightTitle.Font = Enum.Font.SourceSansBold
 rightTitle.Parent = rightPanel
 
+-- Tab Buttons
+local tabBar = Instance.new("Frame")
+tabBar.Size = UDim2.new(1, 0, 0, 35)
+tabBar.Position = UDim2.new(0, 0, 0, 45)
+tabBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+tabBar.BackgroundTransparency = 0.3
+tabBar.BorderSizePixel = 0
+tabBar.Parent = rightPanel
+
+local playerTabBtn = Instance.new("TextButton")
+playerTabBtn.Size = UDim2.new(0.33, 0, 1, 0)
+playerTabBtn.Position = UDim2.new(0, 0, 0, 0)
+playerTabBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+playerTabBtn.TextColor3 = Color3.new(1,1,1)
+playerTabBtn.Text = "Players"
+playerTabBtn.Font = Enum.Font.SourceSansBold
+playerTabBtn.TextSize = 14
+playerTabBtn.Parent = tabBar
+
+local miscTabBtn = Instance.new("TextButton")
+miscTabBtn.Size = UDim2.new(0.33, 0, 1, 0)
+miscTabBtn.Position = UDim2.new(0.33, 0, 0, 0)
+miscTabBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+miscTabBtn.TextColor3 = Color3.new(1,1,1)
+miscTabBtn.Text = "Misc"
+miscTabBtn.Font = Enum.Font.SourceSansBold
+miscTabBtn.TextSize = 14
+miscTabBtn.Parent = tabBar
+
+local farmTabBtn = Instance.new("TextButton")
+farmTabBtn.Size = UDim2.new(0.34, 0, 1, 0)
+farmTabBtn.Position = UDim2.new(0.66, 0, 0, 0)
+farmTabBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+farmTabBtn.TextColor3 = Color3.new(1,1,1)
+farmTabBtn.Text = "Farm"
+farmTabBtn.Font = Enum.Font.SourceSansBold
+farmTabBtn.TextSize = 14
+farmTabBtn.Parent = tabBar
+
+-- Content container (swaps visibility)
+local contentContainer = Instance.new("Frame")
+contentContainer.Size = UDim2.new(1, 0, 1, -85)
+contentContainer.Position = UDim2.new(0, 0, 0, 85)
+contentContainer.BackgroundTransparency = 1
+contentContainer.Parent = rightPanel
+
+-- Tab 1: Players Tab
+local playersTab = Instance.new("Frame")
+playersTab.Size = UDim2.new(1, 0, 1, 0)
+playersTab.BackgroundTransparency = 1
+playersTab.Visible = true
+playersTab.Parent = contentContainer
+
 local teleportTextBox = Instance.new("TextBox")
 teleportTextBox.Size = UDim2.new(1, -20, 0, 40)
-teleportTextBox.Position = UDim2.new(0, 10, 0, 60)
+teleportTextBox.Position = UDim2.new(0, 10, 0, 0)
 teleportTextBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 teleportTextBox.TextColor3 = Color3.new(1,1,1)
 teleportTextBox.PlaceholderText = "Enter player name..."
@@ -333,75 +394,116 @@ teleportTextBox.Text = ""
 teleportTextBox.Font = Enum.Font.SourceSans
 teleportTextBox.TextSize = 18
 teleportTextBox.ClearTextOnFocus = false
-teleportTextBox.Parent = rightPanel
+teleportTextBox.Parent = playersTab
 teleportTextBox.BackgroundTransparency = 0.5
 
 -- Autocomplete dropdown
 local dropdown = Instance.new("ScrollingFrame")
 dropdown.Size = UDim2.new(1, -20, 0, 100)
-dropdown.Position = UDim2.new(0, 10, 0, 100)
+dropdown.Position = UDim2.new(0, 10, 0, 40)
 dropdown.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 dropdown.BorderSizePixel = 1
 dropdown.BorderColor3 = Color3.fromRGB(80, 80, 80)
 dropdown.ScrollBarThickness = 4
 dropdown.Visible = false
-dropdown.Parent = rightPanel
+dropdown.Parent = playersTab
 dropdown.BackgroundTransparency = 0.5
 
 local dropdownLayout = Instance.new("UIListLayout")
-dropdown.Size = UDim2.new(1, -20, 0, 100)
 dropdownLayout.Padding = UDim.new(0, 2)
 dropdownLayout.Parent = dropdown
 
 local teleportButton = Instance.new("TextButton")
 teleportButton.Size = UDim2.new(1, -20, 0, 40)
-teleportButton.Position = UDim2.new(0, 10, 0, 210)
+teleportButton.Position = UDim2.new(0, 10, 0, 150)
 teleportButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
 teleportButton.TextColor3 = Color3.new(1,1,1)
 teleportButton.Text = "Teleport to Player"
 teleportButton.Font = Enum.Font.SourceSansBold
 teleportButton.TextSize = 18
-teleportButton.Parent = rightPanel
+teleportButton.Parent = playersTab
 
 local teleportBugButton = Instance.new("TextButton")
 teleportBugButton.Size = UDim2.new(1, -20, 0, 40)
-teleportBugButton.Position = UDim2.new(0, 10, 0, 260)
+teleportBugButton.Position = UDim2.new(0, 10, 0, 200)
 teleportBugButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 teleportBugButton.TextColor3 = Color3.new(1,1,1)
 teleportBugButton.Text = "Teleport & Bug Player"
 teleportBugButton.Font = Enum.Font.SourceSansBold
 teleportBugButton.TextSize = 18
-teleportBugButton.Parent = rightPanel
+teleportBugButton.Parent = playersTab
+
+-- Tab 2: Misc Tab
+local miscTab = Instance.new("Frame")
+miscTab.Size = UDim2.new(1, 0, 1, 0)
+miscTab.BackgroundTransparency = 1
+miscTab.Visible = false
+miscTab.Parent = contentContainer
 
 local teleportMiddleButton = Instance.new("TextButton")
 teleportMiddleButton.Size = UDim2.new(1, -20, 0, 40)
-teleportMiddleButton.Position = UDim2.new(0, 10, 0, 310)
+teleportMiddleButton.Position = UDim2.new(0, 10, 0, 10)
 teleportMiddleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 200)
 teleportMiddleButton.TextColor3 = Color3.new(1,1,1)
 teleportMiddleButton.Text = "Teleport to Middle"
 teleportMiddleButton.Font = Enum.Font.SourceSansBold
 teleportMiddleButton.TextSize = 18
-teleportMiddleButton.Parent = rightPanel
+teleportMiddleButton.Parent = miscTab
+
+local randomTeleportButton = Instance.new("TextButton")
+randomTeleportButton.Size = UDim2.new(1, -20, 0, 40)
+randomTeleportButton.Position = UDim2.new(0, 10, 0, 60)
+randomTeleportButton.BackgroundColor3 = Color3.fromRGB(100, 0, 150)
+randomTeleportButton.TextColor3 = Color3.new(1,1,1)
+randomTeleportButton.Text = "Teleport to Random Player"
+randomTeleportButton.Font = Enum.Font.SourceSansBold
+randomTeleportButton.TextSize = 18
+randomTeleportButton.Parent = miscTab
+
+-- Tab 3: Farm Tab
+local farmTab = Instance.new("Frame")
+farmTab.Size = UDim2.new(1, 0, 1, 0)
+farmTab.BackgroundTransparency = 1
+farmTab.Visible = false
+farmTab.Parent = contentContainer
 
 local amberButton = Instance.new("TextButton")
 amberButton.Size = UDim2.new(1, -20, 0, 40)
-amberButton.Position = UDim2.new(0, 10, 0, 360)
+amberButton.Position = UDim2.new(0, 10, 0, 10)
 amberButton.BackgroundColor3 = Color3.fromRGB(150, 100, 0)
 amberButton.TextColor3 = Color3.new(1,1,1)
 amberButton.Text = "Farm Amber"
 amberButton.Font = Enum.Font.SourceSansBold
 amberButton.TextSize = 18
-amberButton.Parent = rightPanel
+amberButton.Parent = farmTab
 
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, -20, 0, 40)
-statusLabel.Position = UDim2.new(0, 10, 0, 150)
+statusLabel.Position = UDim2.new(0, 10, 0, 60)
 statusLabel.BackgroundTransparency = 1
 statusLabel.TextColor3 = Color3.new(1,1,1)
 statusLabel.Text = ""
 statusLabel.Font = Enum.Font.SourceSans
 statusLabel.TextSize = 14
-statusLabel.Parent = rightPanel
+statusLabel.Parent = farmTab
+
+-- Tab switching function
+local function switchTab(tabName)
+    playersTab.Visible = (tabName == "players")
+    miscTab.Visible = (tabName == "misc")
+    farmTab.Visible = (tabName == "farm")
+    
+    -- Update button colors
+    playerTabBtn.BackgroundColor3 = tabName == "players" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(50, 50, 50)
+    miscTabBtn.BackgroundColor3 = tabName == "misc" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(50, 50, 50)
+    farmTabBtn.BackgroundColor3 = tabName == "farm" and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(50, 50, 50)
+end
+
+playerTabBtn.MouseButton1Click:Connect(function() switchTab("players") end)
+miscTabBtn.MouseButton1Click:Connect(function() switchTab("misc") end)
+farmTabBtn.MouseButton1Click:Connect(function() switchTab("farm") end)
+
+-- Then connect all your button functions as before, but using the new button variables
 
 local function updateDropdown(searchText)
     for _, child in ipairs(dropdown:GetChildren()) do
@@ -415,7 +517,10 @@ local function updateDropdown(searchText)
     if searchText == "" then
         -- Show all players except yourself
         for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= Players.LocalPlayer then
+            if player ~= Players.LocalPlayer
+                and player.Character
+                and player.Character:FindFirstChild("HumanoidRootPart") then
+                
                 table.insert(matches, player.Name)
             end
         end
@@ -423,7 +528,11 @@ local function updateDropdown(searchText)
         local searchLower = searchText:lower()
 
         for _, player in ipairs(Players:GetPlayers()) do
-            if player.Name:lower():find(searchLower) and player ~= Players.LocalPlayer then
+            if player.Name:lower():find(searchLower)
+                and player ~= Players.LocalPlayer
+                and player.Character
+                and player.Character:FindFirstChild("HumanoidRootPart") then
+                
                 table.insert(matches, player.Name)
             end
         end
@@ -468,6 +577,7 @@ local function hideDropdown()
 end
 
 teleportTextBox.Focused:Connect(function()
+    teleportTextBox.Text = ""
     updateDropdown(teleportTextBox.Text)
 end)
 
@@ -494,11 +604,30 @@ teleportButton.MouseButton1Click:Connect(function()
     end
     
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        teleport(targetPlayer.Character.HumanoidRootPart.CFrame)
+        teleport(targetPlayer.Character.HumanoidRootPart.CFrame, nil, true)
         statusLabel.Text = "Teleported to " .. targetPlayer.Name
         statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
     else
         statusLabel.Text = "Player not found or not in game"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    end
+end)
+
+randomTeleportButton.MouseButton1Click:Connect(function()
+    local spawnedPlayers = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(spawnedPlayers, p)
+        end
+    end
+    
+    if #spawnedPlayers > 0 then
+        local randomPlayer = spawnedPlayers[math.random(1, #spawnedPlayers)]
+        teleport(randomPlayer.Character.HumanoidRootPart.CFrame)
+        statusLabel.Text = "Teleported to random: " .. randomPlayer.Name
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        statusLabel.Text = "No other players found"
         statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
     end
 end)
@@ -532,7 +661,7 @@ end)
 teleportMiddleButton.MouseButton1Click:Connect(function()
     local middleCFrame = CFrame.new(-545.565002, 24.1376266, 582.742737, 0.789563239, 0.159172803, 0.592666805, -0.376903147, 0.887939095, 0.263644189, -0.484287053, -0.431541711, 0.761076748)
 
-    teleport(middleCFrame)
+    teleport(middleCFrame, nil, true)
 end)
 
 amberButton.MouseButton1Click:Connect(function()
@@ -647,9 +776,8 @@ for _, dinoName in ipairs(dinos) do
             if owned then
                 startWalkSpeedLoop(multipliedSpeed)
                 local actualDinoName = dinoNameMapping[dinoName] or dinoName
-                emergencyCFrame()
                 local currentCFrame = player.Character.HumanoidRootPart.CFrame
-                teleport(currentCFrame, actualDinoName)
+                teleport(currentCFrame, actualDinoName, true)
             else
                 button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
                 task.wait(0.2)
@@ -704,12 +832,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         stopWalkSpeedLoop()
     end
     if input.KeyCode == Enum.KeyCode.H then
-        emergencyCFrame()
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
-        teleport(currentCFrame)
+        teleport(currentCFrame, nil, true)
     end
     if input.KeyCode == Enum.KeyCode.X then
-        emergencyCFrame()
         teleportToMouse()
     end
     if input.KeyCode == Enum.KeyCode.KeypadPlus then
@@ -718,21 +844,53 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.KeypadMinus then
         rejoin()
     end
-    if input.KeyCode == Enum.KeyCode.M then
-        despawn()
-        task.wait(0.5)
-        teleport(savedCleanCFrame)
-        print(savedCleanCFrame)
-    end
     if input.KeyCode == Enum.KeyCode.G then
         toggleSpeed()
     end
     if input.KeyCode == Enum.KeyCode.Y then
         local originalDino = player.Character.Name
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
+        despawn()
         teleport(currentCFrame, "Giganotosaurus")
         task.wait(1)
+        teleport(currentCFrame, originalDino, true)
+    end
+    if input.KeyCode == Enum.KeyCode.M then
+        local originalDino = player.Character.Name
+        local currentCFrame = player.Character.HumanoidRootPart.CFrame
         despawn()
-        teleport(currentCFrame, originalDino)
+        teleport(currentCFrame, "Therizinosaurus")
+        task.wait(1)
+        teleport(currentCFrame, originalDino, true)
+    end
+    if input.KeyCode == Enum.KeyCode.KeypadOne then
+        local combatFolder = game:GetService("ReplicatedStorage")["ccb1ba18-1e9d-4bb5-86d2-ca2d9fc33e9c"]
+        local attacker = false
+        local attackerName = nil
+
+        for _, users in ipairs(combatFolder:GetChildren()) do
+
+            for _, descendant in ipairs(users:GetChildren()) do
+                if descendant:IsA("ObjectValue") and descendant.Name == player.Name then
+                    attacker = true
+                    attackerName = users.Name
+                    break
+                end
+            end
+        end
+        
+        if attacker then
+            local currentDino = player.Character.Name
+            if Players[attackerName].Character then
+            local attackerCFrame = Players[attackerName].Character.HumanoidRootPart.CFrame
+                teleport(attackerCFrame, currentDino, true)
+            else
+            local attackerCFrame = Players[attackerName].Character.HumanoidRootPart.CFrame
+                Players[attackerName].CharacterAdded:Wait()
+                teleport(attackerCFrame, currentDino, true)
+            end
+        else
+            print("No attacker found")
+        end
     end
 end)
