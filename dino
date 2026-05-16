@@ -636,6 +636,43 @@ RunService.Heartbeat:Connect(function()
     fpsDisplayer.Text = "FPS: " .. fps
 end)
 
+local healthDisplayer = Instance.new("TextLabel")
+healthDisplayer.Size = UDim2.new(0.1, 0, 0, 30)
+healthDisplayer.AnchorPoint = Vector2.new(1, 0)
+healthDisplayer.Position = UDim2.new(1, 0, 0, 8)
+healthDisplayer.BackgroundTransparency = 1
+healthDisplayer.TextColor3 = Color3.new(0,1,0)
+healthDisplayer.TextScaled = true
+healthDisplayer.Font = Enum.Font.SourceSansBold
+healthDisplayer.Parent = screenGui
+
+local healthConnections = {}
+
+local function getHealth(character)
+
+    for _, connection in ipairs(healthConnections) do
+        connection:Disconnect()
+    end
+    healthConnections = {}
+    
+    local humanoid = character:WaitForChild("Humanoid")
+    if not humanoid then return end
+
+    local function updateHealth()
+        healthDisplayer.Text = "HP: " .. math.floor(humanoid.Health) .. "/" .. humanoid.MaxHealth 
+    end
+
+    updateHealth()
+    table.insert(healthConnections, humanoid:GetPropertyChangedSignal("Health"):Connect(updateHealth))
+    table.insert(healthConnections, humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(updateHealth))
+end
+
+if player.Character then
+    getHealth(player.Character)
+end
+
+player.CharacterAdded:Connect(getHealth)
+
 -- Tab switching function
 local function switchTab(tabName)
     playersTab.Visible = (tabName == "players")
@@ -803,6 +840,13 @@ randomPickButton.MouseButton1Click:Connect(function()
     end
 end)
 
+teleportMiddleButton.MouseButton1Click:Connect(function()
+    local middleCFrame = CFrame.new(-545.565002, 24.1376266, 582.742737, 0.789563239, 0.159172803, 0.592666805, -0.376903147, 0.887939095, 0.263644189, -0.484287053, -0.431541711, 0.761076748)
+    local originalDino = player.Character.Name
+    
+    teleport(middleCFrame, originalDino)
+end)
+
 teleportBugButton.MouseButton1Click:Connect(function()
     local targetName = teleportTextBox.Text
     local targetPlayer = nil
@@ -817,10 +861,30 @@ teleportBugButton.MouseButton1Click:Connect(function()
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local originalDino = player.Character.Name
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
+        
+        -- First teleport as Giga to start glitch
         teleport(targetPlayer.Character.HumanoidRootPart.CFrame, "Giganotosaurus")
-        task.wait(1)
+        
+        -- Loop teleports for 2 seconds BEFORE respawning
+        local endTime = tick() + 2
+        while tick() < endTime and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local targetCFrame = targetPlayer.Character.HumanoidRootPart.CFrame
+                player.Character.HumanoidRootPart.CFrame = targetCFrame * CFrame.new(0, 0, 15)
+            end
+            task.wait(0.05)
+        end
+        
+        -- Then despawn and return to original
         despawn()
+        task.wait(0.5)
         teleport(targetPlayer.Character.HumanoidRootPart.CFrame, originalDino)
+        local character = player.CharacterAdded:Wait()
+        local hRoot = character:WaitForChild("HumanoidRootPart")
+        pressKey("F")
+        task.wait(0.1)
+        hRoot.CFrame = currentCFrame
+        
         statusLabel.Text = "Teleported & bugged " .. targetPlayer.Name
         statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
     else
@@ -906,7 +970,6 @@ if _G.killConnection then
     _G.killConnection:Disconnect()
 end
 
--- Then later, store the connection
 local killingEnabled = false
 local currentTarget = nil
 
@@ -936,8 +999,31 @@ _G.killConnection = killButton.MouseButton1Click:Connect(function()
         task.spawn(function()
             while killingEnabled and currentTarget and currentTarget.Character do
                 if player.Character and currentTarget.Character then
-                    teleport(currentTarget.Character.HumanoidRootPart.CFrame, currentDino, true)
-                    task.wait(1)
+                    local targetCFrame = currentTarget.Character.HumanoidRootPart.CFrame
+                    local behindCFrame = targetCFrame * CFrame.new(0, 0, 15)
+                    teleport(behindCFrame, currentDino, true)
+                    
+                    local startTime = tick()
+                    local hasHighlight = false
+                    
+                    while killingEnabled and currentTarget and currentTarget.Character and not hasHighlight do
+                        local freshTargetCFrame = currentTarget.Character.HumanoidRootPart.CFrame
+                        local freshBehindCFrame = freshTargetCFrame * CFrame.new(0, 0, 15)
+                        player.Character.HumanoidRootPart.CFrame = freshBehindCFrame
+                        
+                        if currentTarget.Character:FindFirstChild("Highlight") then
+                            hasHighlight = true
+                        end
+                        
+                        if tick() - startTime >= 2.5 then
+                            break
+                        end
+                        
+                        task.wait(0.05)
+                    end
+                    -- REMOVED the second while loop that waited for Highlight to disappear
+                else
+                    break
                 end
             end
             if killingEnabled then
@@ -951,24 +1037,6 @@ _G.killConnection = killButton.MouseButton1Click:Connect(function()
     else
         statusLabel.Text = "Player not found or not spawned"
     end
-end)
-
-teleportMiddleButton.MouseButton1Click:Connect(function()
-    local middleCFrame = CFrame.new(-545.565002, 24.1376266, 582.742737, 0.789563239, 0.159172803, 0.592666805, -0.376903147, 0.887939095, 0.263644189, -0.484287053, -0.431541711, 0.761076748)
-
-    teleport(middleCFrame, nil, true)
-end)
-
-amberButton.MouseButton1Click:Connect(function()
-    statusLabel.Text = "Farming amber..."
-    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    task.spawn(function()
-        processAmber()
-        statusLabel.Text = "Amber farming complete!"
-        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        task.wait(2)
-        statusLabel.Text = ""
-    end)
 end)
 
 ---------------------------------------------------
@@ -1217,7 +1285,11 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
     end
 
     if input.KeyCode == Enum.KeyCode.C then
-        if not velocityConnection then
+        if velocityConnection then
+            velocityConnection:Disconnect()
+            velocityConnection = nil
+            print("Velocity freeze OFF")
+        else
             velocityConnection = RunService.Heartbeat:Connect(function()
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                     local hrp = player.Character.HumanoidRootPart
@@ -1225,6 +1297,7 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
                     hrp.RotVelocity = Vector3.new(0, 0, 0)
                 end
             end)
+            print("Velocity freeze ON")
         end
     end
 end)
