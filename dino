@@ -174,6 +174,7 @@ end
 
 local function processAmber()
     local currentCFrame = player.Character.HumanoidRootPart.CFrame
+    local oldCameraCFrame = workspace.Camera.CFrame
     local currentDino = player.Character.Name
     spawnRemote:FireServer("Velociraptor")
     task.wait(0.3)
@@ -189,21 +190,19 @@ local function processAmber()
         if hasParts then
             local proximityPrompt = child:FindFirstChildOfClass("Model").ProximityPrompt
             if proximityPrompt then
-
+                workspace.Camera.CFrame = oldCameraCFrame
                 proximityPrompt.HoldDuration = 0
-                teleport(child.CFrame, "Velociraptor", false)
-                task.wait(0.25)
+                teleport(child.CFrame, "Velociraptor", true)
+                task.wait(0.15)
                 proximityPrompt:InputHoldBegin()
                 task.wait(proximityPrompt.HoldDuration)
                 proximityPrompt:InputHoldEnd()
             end
         end
-
-        task.wait(2.5)
-        teleport(currentCFrame, currentDino, true)
     end
+    task.wait(1.5)
+    teleport(currentCFrame, currentDino, true)
 end
-
 ---------------------------------------------------
 -- ACTUAL DINOSAUR NAMES
 ---------------------------------------------------
@@ -587,6 +586,17 @@ statusLabel.Font = Enum.Font.SourceSans
 statusLabel.TextSize = 14
 statusLabel.Parent = farmTab
 
+amberButton.MouseButton1Click:Connect(function()
+    statusLabel.Text = "Farming amber..."
+    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    task.spawn(function()
+        processAmber()
+        statusLabel.Text = "Amber farming complete!"
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        statusLabel.Text = ""
+    end)
+end)
+
 local pingDisplayer = Instance.new("TextLabel")
 pingDisplayer.Size = UDim2.new(0.1, 0, 0, 30)
 pingDisplayer.AnchorPoint = Vector2.new(1, 0)
@@ -673,6 +683,42 @@ end
 
 player.CharacterAdded:Connect(getHealth)
 
+local speedDisplayer = Instance.new("TextLabel")
+speedDisplayer.Size = UDim2.new(0.1, 0, 0, 30)
+speedDisplayer.AnchorPoint = Vector2.new(1, 0)
+speedDisplayer.Position = UDim2.new(1, 0, 0, 42)
+speedDisplayer.BackgroundTransparency = 1
+speedDisplayer.TextColor3 = Color3.new(0,1,0)
+speedDisplayer.TextScaled = true
+speedDisplayer.Font = Enum.Font.SourceSansBold
+speedDisplayer.Parent = screenGui
+
+local speedConnections = {}
+
+local function getSpeed(character)
+
+    for _, connection in ipairs(speedConnections) do
+        connection:Disconnect()
+    end
+    speedConnections = {}
+    
+    local humanoid = character:WaitForChild("Humanoid")
+    if not humanoid then return end
+
+    local function updateSpeed()
+        speedDisplayer.Text = "Speed: " .. string.format("%.1f", humanoid.WalkSpeed)
+    end
+
+    updateSpeed()
+    table.insert(speedConnections, humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(updateSpeed))
+end
+
+if player.Character then
+    getSpeed(player.Character)
+end
+
+player.CharacterAdded:Connect(getSpeed)
+
 -- Tab switching function
 local function switchTab(tabName)
     playersTab.Visible = (tabName == "players")
@@ -689,7 +735,6 @@ playerTabBtn.MouseButton1Click:Connect(function() switchTab("players") end)
 miscTabBtn.MouseButton1Click:Connect(function() switchTab("misc") end)
 farmTabBtn.MouseButton1Click:Connect(function() switchTab("farm") end)
 
--- Then connect all your button functions as before, but using the new button variables
 
 local allDinoButtons = {}
 
@@ -706,7 +751,6 @@ local function updateDinoSearch()
     end
 end
 
--- Connect search box
 searchBox.Changed:Connect(function(prop)
     if prop == "Text" then
         updateDinoSearch()
@@ -998,7 +1042,7 @@ _G.killConnection = killButton.MouseButton1Click:Connect(function()
         
         task.spawn(function()
             while killingEnabled and currentTarget and currentTarget.Character do
-                if player.Character and currentTarget.Character then
+                if player.Character and currentTarget.Character.Humanoid.Health > 0 and currentTarget.Character then
                     local targetCFrame = currentTarget.Character.HumanoidRootPart.CFrame
                     local behindCFrame = targetCFrame * CFrame.new(0, 0, 15)
                     teleport(behindCFrame, currentDino, true)
