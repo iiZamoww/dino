@@ -208,7 +208,8 @@ end
 ---------------------------------------------------
 local dinoNameMapping = {
     ["Allosaurus"] = "DominionAllosaurus",
-    ["Demortus rex"] = "DRex"
+    ["Demortus rex"] = "DRex",
+    ["R-spinosaurus"] = "RebirthSpinosaurus"
 }
 
 ---------------------------------------------------
@@ -521,6 +522,16 @@ bringButton.Font = Enum.Font.SourceSansBold
 bringButton.TextSize = 18
 bringButton.Parent = playersTab
 
+local highlightButton = Instance.new("TextButton")
+highlightButton.Size = UDim2.new(1, -20, 0, 40)
+highlightButton.Position = UDim2.new(0, 10, 0, 300)
+highlightButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+highlightButton.TextColor3 = Color3.new(1,1,1)
+highlightButton.Text = "Highlight Player"
+highlightButton.Font = Enum.Font.SourceSansBold
+highlightButton.TextSize = 18
+highlightButton.Parent = playersTab
+
 local randomPickButton = Instance.new("TextButton")
 randomPickButton.Size = UDim2.new(1, -20, 0, 20)
 randomPickButton.Position = UDim2.new(0, 10, 0, 120)
@@ -551,13 +562,23 @@ teleportMiddleButton.Parent = miscTab
 
 local bringAllButton = Instance.new("TextButton")
 bringAllButton.Size = UDim2.new(1, -20, 0, 40)
-bringAllButton.Position = UDim2.new(0, 10, 0, 60)
+bringAllButton.Position = UDim2.new(0, 10, 0, 50)
 bringAllButton.BackgroundColor3 = Color3.fromRGB(200, 0, 200)
 bringAllButton.TextColor3 = Color3.new(1,1,1)
 bringAllButton.Text = "Bring All Players"
 bringAllButton.Font = Enum.Font.SourceSansBold
 bringAllButton.TextSize = 18
 bringAllButton.Parent = miscTab
+
+local overheadUIButton = Instance.new("TextButton")
+overheadUIButton.Size = UDim2.new(1, -20, 0, 40)
+overheadUIButton.Position = UDim2.new(0, 10, 0, 90)
+overheadUIButton.BackgroundColor3 = Color3.fromRGB(200, 0, 200)
+overheadUIButton.TextColor3 = Color3.new(1,1,1)
+overheadUIButton.Text = "Fix All UIs"
+overheadUIButton.Font = Enum.Font.SourceSansBold
+overheadUIButton.TextSize = 18
+overheadUIButton.Parent = miscTab
 
 -- Tab 3: Farm Tab
 local farmTab = Instance.new("Frame")
@@ -645,79 +666,6 @@ fpsDisplayer.Parent = screenGui
 RunService.Heartbeat:Connect(function()
     fpsDisplayer.Text = "FPS: " .. fps
 end)
-
-local healthDisplayer = Instance.new("TextLabel")
-healthDisplayer.Size = UDim2.new(0.1, 0, 0, 30)
-healthDisplayer.AnchorPoint = Vector2.new(1, 0)
-healthDisplayer.Position = UDim2.new(1, 0, 0, 8)
-healthDisplayer.BackgroundTransparency = 1
-healthDisplayer.TextColor3 = Color3.new(0,1,0)
-healthDisplayer.TextScaled = true
-healthDisplayer.Font = Enum.Font.SourceSansBold
-healthDisplayer.Parent = screenGui
-
-local healthConnections = {}
-
-local function getHealth(character)
-
-    for _, connection in ipairs(healthConnections) do
-        connection:Disconnect()
-    end
-    healthConnections = {}
-    
-    local humanoid = character:WaitForChild("Humanoid")
-    if not humanoid then return end
-
-    local function updateHealth()
-        healthDisplayer.Text = "HP: " .. math.floor(humanoid.Health) .. "/" .. humanoid.MaxHealth 
-    end
-
-    updateHealth()
-    table.insert(healthConnections, humanoid:GetPropertyChangedSignal("Health"):Connect(updateHealth))
-    table.insert(healthConnections, humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(updateHealth))
-end
-
-if player.Character then
-    getHealth(player.Character)
-end
-
-player.CharacterAdded:Connect(getHealth)
-
-local speedDisplayer = Instance.new("TextLabel")
-speedDisplayer.Size = UDim2.new(0.1, 0, 0, 30)
-speedDisplayer.AnchorPoint = Vector2.new(1, 0)
-speedDisplayer.Position = UDim2.new(1, 0, 0, 42)
-speedDisplayer.BackgroundTransparency = 1
-speedDisplayer.TextColor3 = Color3.new(0,1,0)
-speedDisplayer.TextScaled = true
-speedDisplayer.Font = Enum.Font.SourceSansBold
-speedDisplayer.Parent = screenGui
-
-local speedConnections = {}
-
-local function getSpeed(character)
-
-    for _, connection in ipairs(speedConnections) do
-        connection:Disconnect()
-    end
-    speedConnections = {}
-    
-    local humanoid = character:WaitForChild("Humanoid")
-    if not humanoid then return end
-
-    local function updateSpeed()
-        speedDisplayer.Text = "Speed: " .. string.format("%.1f", humanoid.WalkSpeed)
-    end
-
-    updateSpeed()
-    table.insert(speedConnections, humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(updateSpeed))
-end
-
-if player.Character then
-    getSpeed(player.Character)
-end
-
-player.CharacterAdded:Connect(getSpeed)
 
 -- Tab switching function
 local function switchTab(tabName)
@@ -1009,6 +957,120 @@ bringAllButton.MouseButton1Click:Connect(function()
     end)
 end)
 
+overheadUIButton.MouseButton1Click:Connect(function()
+    local function createOverheadUI(character)
+        local oldOverheadUI = character:FindFirstChild("OverheadUI")
+        if oldOverheadUI then oldOverheadUI.Enabled = false end
+
+        local gui = character:FindFirstChild("FixedOverheadUI")
+        if gui then gui:Destroy() end
+        
+        local head = character:FindFirstChild("CustomHeadPart")
+        if not head then
+            print("not head")
+            head = character:WaitForChild("CustomHeadPart", 5)
+            if not head then return end
+            print("not head at all")
+        end
+        
+        local billboard = Instance.new("BillboardGui")
+        billboard.Active = true
+        billboard.Adornee = head
+        billboard.AlwaysOnTop = true
+        billboard.ClipsDescendants = true
+        billboard.ExtentsOffset = Vector3.new(0, 5, 0)
+        billboard.Name = "test"
+        billboard.Parent = character
+        billboard.Size = UDim2.new(7, 0, 5, 0)
+        billboard.StudsOffset = Vector3.new(0, 0, 0)
+        billboard.ZIndexBehavior = "Sibling"
+        
+        local main = Instance.new("CanvasGroup")
+        main.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        main.BackgroundTransparency = 1
+        main.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        main.Name = "Main"
+        main.Parent = billboard
+        main.Size = UDim2.new(1, 0, 1, 0)
+        
+        local health = Instance.new("Frame")
+        health.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        health.Name = "Health"
+        health.Parent = main
+        health.Position = UDim2.new(0, 0, 0.5, 0)
+        health.Size = UDim2.new(1, 0, 0.2, 0)
+        
+        local healthUICorner = Instance.new("UICorner")
+        healthUICorner.CornerRadius = UDim.new(0, 8)
+        healthUICorner.Parent = health
+        
+        local currentHealth = Instance.new("Frame")
+        currentHealth.BackgroundColor3 = Color3.fromRGB(105, 255, 5)
+        currentHealth.Parent = health
+        currentHealth.Name = "CurrentHealth"
+        currentHealth.Size = UDim2.new(1, 0, 1, 0)
+        
+        local currentHealthUICorner = Instance.new("UICorner")
+        currentHealthUICorner.CornerRadius = UDim.new(0, 8)
+        currentHealthUICorner.Parent = currentHealth
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.FontFace = Font.new(
+            "rbxasset://fonts/families/JosefinSans.json",
+            Enum.FontWeight.Bold,
+            Enum.FontStyle.Normal
+        )
+        nameLabel.Name = "NameLabel"
+        nameLabel.Parent = main
+        nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        nameLabel.Text = Players:GetPlayerFromCharacter(character).Name
+        nameLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.TextScaled = true
+        nameLabel.TextSize = 14
+        nameLabel.TextWrapped = true
+        
+        local shadow = Instance.new("TextLabel")
+        shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+        shadow.AutomaticSize = "Y"
+        shadow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        shadow.BackgroundTransparency = 1
+        shadow.FontFace = Font.new(
+            "rbxasset://fonts/families/JosefinSans.json",
+            Enum.FontWeight.Bold,
+            Enum.FontStyle.Normal
+        )
+        shadow.Name = "Shadow"
+        shadow.Parent = nameLabel
+        shadow.Position = UDim2.new(0.5, 0, 0.47, 0)
+        shadow.Size = UDim2.new(1, 0, 1, 0)
+        shadow.Text = Players:GetPlayerFromCharacter(character).Name
+        shadow.TextColor3 = Color3.fromRGB(255, 255, 255)
+        shadow.TextScaled = true
+        shadow.TextSize = 14
+        shadow.TextWrapped = true
+        
+        local humanoid = character:WaitForChild("Humanoid")
+        local function updateHealth()
+            local hpSize = humanoid.Health / humanoid.MaxHealth
+            currentHealth.Size = UDim2.new(hpSize, 0, 1, 0)
+        end
+        
+        updateHealth()
+        humanoid:GetPropertyChangedSignal("Health"):Connect(updateHealth)
+    end
+
+
+    for _, currentPlayer in ipairs(Players:GetChildren()) do
+        currentPlayer.CharacterAdded:Connect(createOverheadUI)
+
+        if currentPlayer.Character then
+            createOverheadUI(currentPlayer.Character)
+        end
+    end
+end)
+
 -- At the top with your other cleanup
 if _G.killConnection then
     _G.killConnection:Disconnect()
@@ -1081,6 +1143,28 @@ _G.killConnection = killButton.MouseButton1Click:Connect(function()
     else
         statusLabel.Text = "Player not found or not spawned"
     end
+end)
+
+highlightButton.MouseButton1Click:Connect(function()
+    local targetName = teleportTextBox.Text
+    local targetPlayer = nil
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name:lower() == targetName:lower() then
+            targetPlayer = player
+            break
+        end
+    end
+
+    local fakeHighlight = targetPlayer.Character:FindFirstChild("FakeHighlight")
+    if fakeHighlight then fakeHighlight:Destroy()
+    elseif targetPlayer and targetPlayer.Character then
+        local highlight = Instance.new("Highlight")
+        highlight.Parent = targetPlayer.Character
+        highlight.Name = "FakeHighlight"
+    end
+
+    
 end)
 
 ---------------------------------------------------
@@ -1222,7 +1306,6 @@ local function toggleSpeed()
         print("Speed DISABLED")
     end
 end
-
 ---------------------------------------------------
 -- Keybinds
 ---------------------------------------------------
