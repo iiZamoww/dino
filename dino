@@ -854,10 +854,8 @@ teleportBugButton.MouseButton1Click:Connect(function()
         local originalDino = player.Character.Name
         local currentCFrame = player.Character.HumanoidRootPart.CFrame
         
-        -- First teleport as Giga to start glitch
         teleport(targetPlayer.Character.HumanoidRootPart.CFrame, "Giganotosaurus")
         
-        -- Loop teleports for 2 seconds BEFORE respawning
         local endTime = tick() + 2
         while tick() < endTime and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -867,7 +865,6 @@ teleportBugButton.MouseButton1Click:Connect(function()
             task.wait(0.05)
         end
         
-        -- Then despawn and return to original
         despawn()
         task.wait(0.5)
         teleport(targetPlayer.Character.HumanoidRootPart.CFrame, originalDino)
@@ -979,7 +976,7 @@ overheadUIButton.MouseButton1Click:Connect(function()
         billboard.AlwaysOnTop = true
         billboard.ClipsDescendants = true
         billboard.ExtentsOffset = Vector3.new(0, 5, 0)
-        billboard.Name = "test"
+        billboard.Name = "FixedOverheadUI"
         billboard.Parent = character
         billboard.Size = UDim2.new(7, 0, 5, 0)
         billboard.StudsOffset = Vector3.new(0, 0, 0)
@@ -1071,7 +1068,6 @@ overheadUIButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- At the top with your other cleanup
 if _G.killConnection then
     _G.killConnection:Disconnect()
 end
@@ -1360,6 +1356,16 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
         task.wait(1)
         teleport(currentCFrame, originalDino, true)
     end
+
+    if input.KeyCode == Enum.KeyCode.U then
+        local originalDino = player.Character.Name
+        local currentCFrame = player.Character.HumanoidRootPart.CFrame
+        despawn()
+        teleport(currentCFrame, "Triceratops")
+        task.wait(1)
+        teleport(currentCFrame, originalDino, true)
+    end
+
 
     if input.KeyCode == Enum.KeyCode.M then
         local originalDino = player.Character.Name
