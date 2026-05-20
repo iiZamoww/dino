@@ -255,12 +255,26 @@ local fallbackSpeeds = {
     ["Invictus rex"] = 26, ["Motavolare"] = 42, ["Pachycephalosaurus"] = 42,
     ["Parasaurolophus"] = 34, ["Prototype rex"] = 34, ["Pyroraptor"] = 50,
     ["R-spinosaurus"] = 28, ["Reaper theri"] = 26, ["Scarecrow bary"] = 30,
-    ["Spinosaurus"] = 27, ["Styracosaurus"] = 39, ["Suchomimus"] = 32,
+    ["Spinaclavus"]= 39, ["Spinosaurus"] = 27, ["Styracosaurus"] = 39, ["Suchomimus"] = 32,
     ["Tarbosaurus"] = 28, ["Therizinosaurus"] = 29, ["Titanosaurus"] = 7,
     ["Triceratops"] = 24, ["Tyrannosaurus"] = 25, ["Undead tyrant"] = 30,
     ["Velociraptor"] = 50, ["Yeti trike"] = 20, ["Yutyrannus"] = 37
 }
 
+local fallbackSpeedsWalk = {
+    ["Allosaurus"] = 14, ["Ankylosaurus"] = 10, ["Apatosaurus"] = 9,
+    ["Baryonyx"] = 16, ["Brachiosaurus"] = 6, ["Bunny"] = 15,
+    ["Carnotaurus"] = 15, ["Ceratosaurus"] = 15, ["Demortus rex"] = 11,
+    ["Dilophosaurus"] = 18, ["Dimetrodon"] = 18, ["Gallimimus"] = 18,
+    ["Giganotosaurus"] = 12, ["Goat"] = 19, ["Iguanodon"] = 15,
+    ["Invictus rex"] = 13, ["Motavolare"] = 17, ["Pachycephalosaurus"] = 17,
+    ["Parasaurolophus"] = 17, ["Prototype rex"] = 34, ["Pyroraptor"] = 21,
+    ["R-spinosaurus"] = 13, ["Reaper theri"] = 14, ["Scarecrow bary"] = 15,
+    ["Spinaclavus"]= 15, ["Spinosaurus"] = 13, ["Styracosaurus"] = 15, ["Suchomimus"] = 15,
+    ["Tarbosaurus"] = 14, ["Therizinosaurus"] = 14, ["Titanosaurus"] = 6,
+    ["Triceratops"] = 12, ["Tyrannosaurus"] = 13, ["Undead tyrant"] = 10,
+    ["Velociraptor"] = 20, ["Yeti trike"] = 10, ["Yutyrannus"] = 15
+}
 ---------------------------------------------------
 -- ABLE TO TELEPORT
 ---------------------------------------------------
@@ -294,6 +308,10 @@ local function getDinoSpeed(dinoName)
         end
     end
     return fallbackSpeeds[dinoName] or 16
+end
+
+local function getDinoSpeedWalk(dinoName)
+    return fallbackSpeedsWalk[dinoName] or 16
 end
 
 ---------------------------------------------------
@@ -665,6 +683,25 @@ fpsDisplayer.Parent = screenGui
 
 RunService.Heartbeat:Connect(function()
     fpsDisplayer.Text = "FPS: " .. fps
+end)
+
+local playerDisplayer = Instance.new("TextLabel")
+playerDisplayer.Size = UDim2.new(0.1, 0, 0, 30)
+playerDisplayer.AnchorPoint = Vector2.new(1, 0)
+playerDisplayer.Position = UDim2.new(1, 0, 0, 8)
+playerDisplayer.BackgroundTransparency = 1
+playerDisplayer.TextColor3 = Color3.new(0,1,0)
+playerDisplayer.TextScaled = true
+playerDisplayer.Font = Enum.Font.SourceSansBold
+playerDisplayer.Parent = screenGui
+playerDisplayer.Text = "Players: " .. #Players:GetChildren() .. "/" .. Players.MaxPlayers
+
+Players.ChildAdded:Connect(function()
+    playerDisplayer.Text = "Players: " .. #Players:GetChildren() .. "/" .. Players.MaxPlayers
+end)
+
+Players.ChildRemoved:Connect(function()
+    playerDisplayer.Text = "Players: " .. #Players:GetChildren() .. "/" .. Players.MaxPlayers
 end)
 
 -- Tab switching function
@@ -1302,6 +1339,7 @@ local function toggleSpeed()
         print("Speed DISABLED")
     end
 end
+
 ---------------------------------------------------
 -- Keybinds
 ---------------------------------------------------
@@ -1346,6 +1384,12 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
     
     if input.KeyCode == Enum.KeyCode.G then
         toggleSpeed()
+    end
+
+    if input.KeyCode == Enum.KeyCode.Q then
+        local currentDino = player.Character.Name
+        stopWalkSpeedLoop()
+        player.Character.Humanoid.WalkSpeed = getDinoSpeedWalk(currentDino)
     end
 
     if input.KeyCode == Enum.KeyCode.Y then
