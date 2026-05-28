@@ -555,6 +555,16 @@ highlightButton.Font = Enum.Font.SourceSansBold
 highlightButton.TextSize = 18
 highlightButton.Parent = playersTab
 
+local highlightAllButton = Instance.new("TextButton")
+highlightAllButton.Size = UDim2.new(1, -20, 0, 40)
+highlightAllButton.Position = UDim2.new(0, 10, 0, 340)
+highlightAllButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+highlightAllButton.TextColor3 = Color3.new(1,1,1)
+highlightAllButton.Text = "Highlight All Players"
+highlightAllButton.Font = Enum.Font.SourceSansBold
+highlightAllButton.TextSize = 18
+highlightAllButton.Parent = playersTab
+
 local randomPickButton = Instance.new("TextButton")
 randomPickButton.Size = UDim2.new(1, -20, 0, 20)
 randomPickButton.Position = UDim2.new(0, 10, 0, 120)
@@ -1237,6 +1247,36 @@ highlightButton.MouseButton1Click:Connect(function()
     
 end)
 
+local isHighlightOn = false
+
+highlightAllButton.MouseButton1Click:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        local character = player.Character
+        print(player.Name .. " should be highlighted")
+        if player.Character then
+            if isHighlightOn == false then
+                print("highlight was false")
+                local highlight = Instance.new("Highlight")
+                highlight.Parent = player.Character
+                highlight.Name = "FakeAllHighlight"
+            else
+                print("highlight was true")
+                local highlight = player.Character:FindFirstChild("FakeAllHighlight")
+                if highlight then highlight:Destroy() end
+            end
+        end
+    end
+
+    if isHighlightOn == false then
+        isHighlightOn = true
+        print("isHighlight is now true")
+    else
+        isHighlightOn = false
+        print("isHighlight is now false")
+    end
+
+end)
+
 ---------------------------------------------------
 -- WALKSPEED LOOP SYSTEM
 ---------------------------------------------------
@@ -1474,6 +1514,15 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
         teleport(currentCFrame, originalDino, true)
     end
 
+    if input.KeyCode == Enum.KeyCode.B then
+        local originalDino = player.Character.Name
+        local currentCFrame = player.Character.HumanoidRootPart.CFrame
+        despawn()
+        teleport(currentCFrame, "Titanosaurus")
+        task.wait(2.5)
+        teleport(currentCFrame, originalDino, true)
+    end
+
     if input.KeyCode == Enum.KeyCode.KeypadOne then
         local combatFolder = game:GetService("ReplicatedStorage")["ccb1ba18-1e9d-4bb5-86d2-ca2d9fc33e9c"]
         local attacker = false
@@ -1539,6 +1588,17 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
                 print(player.Name .. " - " .. playerCharacter.Name)
             end
         end
+    end
+
+    if input.KeyCode == Enum.KeyCode.J then
+        local currentCFrame = player.Character.HumanoidRootPart.CFrame
+        teleport(currentCFrame, "Pachycephalosaurus", true)
+    end
+
+    if input.KeyCode == Enum.KeyCode.KeypadThree then
+        local targetCFrame = CFrame.new(0, 670, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+        local currentDino = player.Character.Name
+        teleport(targetCFrame, currentDino, true)
     end
 end)
 
