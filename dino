@@ -208,6 +208,19 @@ local function processAmber()
     task.wait(1.5)
     teleport(currentCFrame, currentDino, true)
 end
+
+local function heavyAttackAsDino(dinoToSpawn, delay)
+    local originalDino = player.Character.Name
+    local currentCFrame = player.Character.HumanoidRootPart.CFrame
+    teleport(currentCFrame, dinoToSpawn, true)
+    task.wait(delay)
+    teleport(currentCFrame, originalDino, true)
+end
+
+player:GetPropertyChangedSignal("GameplayPaused"):Connect(function()
+    player.GameplayPaused = false
+end)
+
 ---------------------------------------------------
 -- ACTUAL DINOSAUR NAMES
 ---------------------------------------------------
@@ -1243,39 +1256,59 @@ highlightButton.MouseButton1Click:Connect(function()
         highlight.Parent = targetPlayer.Character
         highlight.Name = "FakeHighlight"
     end
-
     
 end)
 
 local isHighlightOn = false
 
+local function setHighlight(character, shouldHighlight)
+    if shouldHighlight then
+        local existing = character:FindFirstChild("FakeAllHighlight")
+        if not existing then
+            local highlight = Instance.new("Highlight")
+            highlight.Parent = character
+            highlight.Name = "FakeAllHighlight"
+        end
+    else
+        local highlight = character:FindFirstChild("FakeAllHighlight")
+        if highlight then highlight:Destroy() end
+    end
+end
+
 highlightAllButton.MouseButton1Click:Connect(function()
+    isHighlightOn = not isHighlightOn
+    
     for _, player in ipairs(Players:GetPlayers()) do
-        local character = player.Character
-        print(player.Name .. " should be highlighted")
         if player.Character then
-            if isHighlightOn == false then
-                print("highlight was false")
-                local highlight = Instance.new("Highlight")
-                highlight.Parent = player.Character
-                highlight.Name = "FakeAllHighlight"
-            else
-                print("highlight was true")
-                local highlight = player.Character:FindFirstChild("FakeAllHighlight")
-                if highlight then highlight:Destroy() end
-            end
+            setHighlight(player.Character, isHighlightOn)
         end
     end
-
-    if isHighlightOn == false then
-        isHighlightOn = true
-        print("isHighlight is now true")
-    else
-        isHighlightOn = false
-        print("isHighlight is now false")
-    end
-
+    
+    print("Highlight is now", isHighlightOn)
 end)
+
+
+Players.PlayerAdded:Connect(function(newPlayer)
+    newPlayer.CharacterAdded:Connect(function(character)
+        if isHighlightOn then
+            setHighlight(character, true)
+        end
+    end)
+end)
+
+player.CharacterAdded:Connect(function(character)
+    if isHighlightOn then
+        setHighlight(character, true)
+    end
+end)
+
+for _, existingPlayer in ipairs(Players:GetPlayers()) do
+    existingPlayer.CharacterAdded:Connect(function(character)
+        if isHighlightOn then
+            setHighlight(character, true)
+        end
+    end)
+end
 
 ---------------------------------------------------
 -- WALKSPEED LOOP SYSTEM
@@ -1478,49 +1511,23 @@ _G.keybindConnection = UserInputService.InputBegan:Connect(function(input, gameP
     end
 
     if input.KeyCode == Enum.KeyCode.Y then
-        local originalDino = player.Character.Name
-        local currentCFrame = player.Character.HumanoidRootPart.CFrame
-        despawn()
-        teleport(currentCFrame, "Giganotosaurus")
-        task.wait(1)
-        teleport(currentCFrame, originalDino, true)
+        heavyAttackAsDino("Giganotosaurus", 1)
     end
 
     if input.KeyCode == Enum.KeyCode.U then
-        local originalDino = player.Character.Name
-        local currentCFrame = player.Character.HumanoidRootPart.CFrame
-        despawn()
-        teleport(currentCFrame, "Triceratops")
-        task.wait(1)
-        teleport(currentCFrame, originalDino, true)
+        heavyAttackAsDino("Triceratops", 1)
     end
 
-
     if input.KeyCode == Enum.KeyCode.M then
-        local originalDino = player.Character.Name
-        local currentCFrame = player.Character.HumanoidRootPart.CFrame
-        despawn()
-        teleport(currentCFrame, "Therizinosaurus")
-        task.wait(1)
-        teleport(currentCFrame, originalDino, true)
+        heavyAttackAsDino("Therizinosaurus", 1)
     end
 
     if input.KeyCode == Enum.KeyCode.R then
-        local originalDino = player.Character.Name
-        local currentCFrame = player.Character.HumanoidRootPart.CFrame
-        despawn()
-        teleport(currentCFrame, "Parasaurolophus")
-        task.wait(1)
-        teleport(currentCFrame, originalDino, true)
+        heavyAttackAsDino("Parasaurolophus", 0.7)
     end
 
     if input.KeyCode == Enum.KeyCode.B then
-        local originalDino = player.Character.Name
-        local currentCFrame = player.Character.HumanoidRootPart.CFrame
-        despawn()
-        teleport(currentCFrame, "Titanosaurus")
-        task.wait(2.5)
-        teleport(currentCFrame, originalDino, true)
+        heavyAttackAsDino("Titanosaurus", 2.5)
     end
 
     if input.KeyCode == Enum.KeyCode.KeypadOne then
